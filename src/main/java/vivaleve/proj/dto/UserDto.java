@@ -9,8 +9,9 @@ import lombok.*;
 @NoArgsConstructor
 @ToString
 public class UserDto {
-    @NotBlank
-    private String nome;
+
     @NotBlank
     private String email;
+    @NotBlank
+    private String password;
 }
