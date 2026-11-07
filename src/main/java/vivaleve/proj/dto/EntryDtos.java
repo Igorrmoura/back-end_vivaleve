@@ -34,6 +34,7 @@ public final class EntryDtos {
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
+        /** Converte a entidade do banco no JSON de resposta (sem expor o usuário). */
         public static EntryResponse from(EntryEntity entry) {
             return new EntryResponse(
                     entry.getId(),
