@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url:  jdbc:postgresql://dpg-dbnila8u01pc73cs3lr0-a.oregon-postgres.render.com:5432/projeto_vivaleve?sslmode=require
+    url:  jdbc:postgresql://dpg-dbnila8u01pc73cs3lr0-a.oregon-postgres.render.com:5432/projeto_vivaleve?sslmode=require&channelBinding=disable
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -12,3 +12,12 @@ spring:
       port: 5432
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Configuração do JWT emitido pelo AuthService.
+# JWT_SECRET deve ter pelo menos 32 caracteres (exigência do HS256).
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
