@@ -1,16 +1,21 @@
-Pluma Project
-Projeto desenvolvido para fins acadêmicos com foco em acessibilidade, bem-estar e interação do usuário.
+# 🪶 Pluma
 
-🌐 Deploy
-Acesse o projeto online:
+Projeto com foco em **acessibilidade, bem-estar e interação do usuário**.
 
-back-endvivaleve-cpbh36b3q-projeto-viva-leve.vercel.app
+## Sobre
 
-front-endvivaleve.vercel.app
+O Pluma é uma aplicação pensada para oferecer um espaço simples, leve e acessível de autocuidado, com uma experiência de uso tranquila.
 
-📁 Estrutura
-O projeto utiliza uma estrutura simples baseada em:
+##  Status
 
-HTML
-CSS
-JavaScript
+O projeto está sendo **reestruturado do zero**, agora com o desenvolvimento de um **back-end**. A versão anterior era apenas front-end, e a nova arquitetura trará uma base mais completa e escalável.
+
+##  Tecnologias
+
+- **Front-end:** HTML, CSS e JavaScript
+- **Back-end:** em desenvolvimento
+- **Deploy** Vercel and Render
+
+##  Contexto
+
+Projeto desenvolvido para bem-estar e acessibilidade
