@@ -4,7 +4,9 @@ Projeto desenvolvido para fins acadêmicos com foco em acessibilidade, bem-estar
 🌐 Deploy
 Acesse o projeto online:
 
-https://pluma-7xdk9q5b0-igorrmouras-projects.vercel.app
+back-endvivaleve-cpbh36b3q-projeto-viva-leve.vercel.app
+
+front-endvivaleve.vercel.app
 
 📁 Estrutura
 O projeto utiliza uma estrutura simples baseada em:
