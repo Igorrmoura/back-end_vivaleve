@@ -15,6 +15,7 @@ O projeto está sendo **reestruturado do zero**, agora com o desenvolvimento de 
 - **Front-end:** HTML, CSS e JavaScript
 - **Back-end:** em desenvolvimento
 - **Deploy** Vercel and Render
+- **Infraestrutura** Docker
 
 ##  Contexto
 
