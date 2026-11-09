@@ -1,7 +1,8 @@
 package vivaleve.proj.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import vivaleve.proj.dto.UserDto;
 import vivaleve.proj.model.UserEntity;
@@ -13,17 +14,23 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
     private final UserRepository userRepository;
 
-    public UserEntity criarUser(UserDto userDto) {
-        UserEntity entity = new UserEntity();
+    public void criarUser(UserDto userDto) {
+        UserEntity user = userRepository.findByEmail(userDto.getEmail())
+                .orElse(null);
 
-        entity.setEmail(userDto.getEmail());
-        entity.setPassword(userDto.getPassword());
+        if (user != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Usuário já cadastrado com este email"
+            );
+        }
 
-        return userRepository.save(entity);
-
+        userRepository.save(UserEntity.builder()
+                .email(userDto.getEmail())
+                .password(userDto.getPassword())
+                .build());
     }
 
     public List<UserEntity> listarUsers() {
