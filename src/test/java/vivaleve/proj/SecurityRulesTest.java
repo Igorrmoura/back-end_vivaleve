@@ -31,9 +31,11 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,7 +45,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {AuthController.class, EntryController.class, StatsController.class, UserController.class})
 @Import(SecurityConfig.class)
-@TestPropertySource(properties = "jwt.secret=segredo-de-teste-com-pelo-menos-32-bytes!!")
+@TestPropertySource(properties = {
+        "jwt.secret=segredo-de-teste-com-pelo-menos-32-bytes!!"
+})
 class SecurityRulesTest {
 
     @Autowired MockMvc mvc;
@@ -157,11 +161,70 @@ class SecurityRulesTest {
     }
 
     @Test
-    void loginContinuaPublicoMesmoComTokenInvalido() throws Exception {
-        mvc.perform(post("/v1/auth/login")
+    void loginGoogleContinuaPublicoMesmoComTokenInvalido() throws Exception {
+        mvc.perform(post("/v1/auth/google")
                         .header("Authorization", "Bearer {{token}}")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"a@a.com\",\"password\":\"senha12345\"}"))
+                        .content("{\"credential\":\"id-token-do-google\"}"))
                 .andExpect(status().isOk());
+        verify(authService).loginWithGoogle("id-token-do-google");
+    }
+
+    @Test
+    void loginGoogleSemCredentialRetorna400() throws Exception {
+        mvc.perform(post("/v1/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"credential\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void loginGoogleComTokenGoogleInvalidoRetorna401() throws Exception {
+        when(authService.loginWithGoogle("falso"))
+                .thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token do Google inválido"));
+
+        mvc.perform(post("/v1/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"credential\":\"falso\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rotasAntigasDeEmailESenhaNaoExistemMais() throws Exception {
+        String json = "{\"email\":\"a@a.com\",\"password\":\"senha12345\"}";
+        for (String rota : List.of("/v1/auth/login", "/v1/auth/register")) {
+            mvc.perform(post(rota).contentType(MediaType.APPLICATION_JSON).content(json))
+                    .andExpect(result -> {
+                        int s = result.getResponse().getStatus();
+                        if (s != 404 && s != 405) throw new AssertionError(rota + ": esperado 404/405, veio " + s);
+                    });
+        }
+    }
+
+    @Test
+    void corsPermiteOFrontConfigurado() throws Exception {
+        mvc.perform(options("/v1/auth/google")
+                        .header("Origin", "http://localhost:5500")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5500"));
+    }
+
+    @Test
+    void fluxoDeRedirectFoiRemovido() throws Exception {
+        // O login por redirect (oauth2Login) saiu: essas URLs agora são rotas comuns da API,
+        // protegidas como qualquer outra → 401 sem token, nunca um redirect para o Google.
+        mvc.perform(get("/oauth2/authorization/google")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/login/oauth2/code/google?code=qualquer&state=qualquer"))
+                .andExpect(status().isUnauthorized());
+        verify(authService, never()).loginWithGoogle(any(String.class));
+    }
+
+    @Test
+    void corsBloqueiaOrigemDesconhecida() throws Exception {
+        mvc.perform(options("/v1/auth/google")
+                        .header("Origin", "https://site-malicioso.com")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isForbidden());
     }
 }

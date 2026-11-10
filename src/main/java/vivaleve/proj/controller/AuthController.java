@@ -2,20 +2,20 @@ package vivaleve.proj.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vivaleve.proj.dto.AuthDtos.AuthResponse;
-import vivaleve.proj.dto.AuthDtos.LoginRequest;
-import vivaleve.proj.dto.AuthDtos.RegisterRequest;
+import vivaleve.proj.dto.AuthDtos.GoogleLoginRequest;
 import vivaleve.proj.service.AuthService;
 
 /**
- * Endpoints públicos de autenticação (liberados no {@code SecurityConfig}).
+ * Endpoint público de autenticação (liberado no {@code SecurityConfig}).
  *
- * <p>O controller só recebe o JSON, dispara a validação ({@code @Valid}) e delega
- * para o {@link AuthService}. Ambos os endpoints devolvem um {@link AuthResponse}
- * com o JWT que o front deve mandar nas próximas requisições:</p>
+ * <p>ALTERADO (OAuth2 Google): {@code POST /v1/auth/register} e {@code POST /v1/auth/login}
+ * (email + senha) foram removidos. Login e cadastro são feitos exclusivamente com a conta Google.</p>
+ *
+ * <p>O endpoint devolve um {@link AuthResponse} com o JWT da API que o front deve mandar
+ * nas próximas requisições:</p>
  *
  * <pre>Authorization: Bearer &lt;token&gt;</pre>
  */
@@ -28,21 +28,17 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * POST /v1/auth/register — cria a conta e já devolve o token.
-     * Respostas: 201 (criado), 400 (dados inválidos), 409 (email já cadastrado).
+     * NOVO — POST /v1/auth/google — troca o ID Token do Google por um JWT da API.
+     *
+     * <p>Serve tanto para login quanto para cadastro: se for o primeiro acesso dessa conta
+     * Google, o usuário é criado automaticamente.</p>
+     *
+     * <p>Corpo: {@code { "credential": "<ID Token recebido do botão Entrar com Google>" }}</p>
+     * <p>Respostas: 200 (ok), 400 (credential vazio), 401 (token do Google inválido ou email
+     * não verificado), 409 (email já vinculado a outra conta Google), 503 (Google indisponível).</p>
      */
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
-    }
-
-    /**
-     * POST /v1/auth/login — troca email + senha por um token.
-     * Respostas: 200 (ok), 400 (dados inválidos), 401 (credenciais incorretas).
-     */
-    @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    @PostMapping("/google")
+    public AuthResponse google(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request.credential());
     }
 }

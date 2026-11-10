@@ -13,7 +13,8 @@ import vivaleve.proj.repository.UserRepository;
  * Regras de negócio do perfil do usuário.
  *
  * <p>ALTERADO: {@code criarUser} (senha sem hash) e {@code listarUsers} (expunha todos os
- * usuários) foram removidos. O cadastro agora é responsabilidade do {@link AuthService}.</p>
+ * usuários) foram removidos. O cadastro agora é responsabilidade do {@link AuthService},
+ * feito automaticamente no primeiro login com Google.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -30,10 +31,19 @@ public class UserService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
-        // Converte para DTO: só id e email saem no JSON, o hash da senha fica no servidor.
+        return toDto(user);
+    }
+
+    /**
+     * NOVO — Conversão única entidade → DTO, usada aqui e no {@link AuthService}
+     * (antes cada um montava o DTO do seu jeito). Inclui nome e foto do Google.
+     */
+    static UserResponseDto toDto(UserEntity user) {
         return UserResponseDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .name(user.getName())
+                .pictureUrl(user.getPictureUrl())
                 .build();
     }
 }

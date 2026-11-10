@@ -8,8 +8,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -18,23 +16,24 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Configuração de segurança da API.
  *
- * <p>Responsabilidades:</p>
- * <ul>
- *   <li>Fornecer o {@link PasswordEncoder} (BCrypt) usado para guardar senhas com hash.</li>
- *   <li>Fornecer o {@link JwtEncoder} (gera tokens no login/registro) e o {@link JwtDecoder}
- *       (valida o token que chega no header {@code Authorization: Bearer ...}).</li>
- *   <li>Definir quais rotas são públicas e deixar a API stateless (sem sessão/cookie).</li>
- * </ul>
+ * <p>Login: o front usa o botão "Entrar com Google" e manda o ID Token para
+ * {@code POST /v1/auth/google}, que devolve o JWT da API. A partir daí, toda requisição se
+ * autentica com {@code Authorization: Bearer <JWT da API>} — sem sessão e sem cookie.</p>
  *
- * <p>Os tokens são assinados com HMAC-SHA256 usando a chave secreta {@code jwt.secret}.
+ * <p>Os tokens da API são assinados com HMAC-SHA256 usando a chave secreta {@code jwt.secret}.
  * A mesma chave assina e valida, então ela nunca deve ir para o repositório.</p>
  */
 @Configuration
@@ -46,7 +45,12 @@ public class SecurityConfig {
 
     private final SecretKey secretKey;
 
-    public SecurityConfig(@Value("${jwt.secret}") String secret) {
+    /** Origens (domínios do front) autorizadas a chamar a API pelo navegador. */
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(
+            @Value("${jwt.secret}") String secret,
+            @Value("${cors.allowed-origins:http://localhost:5500,http://127.0.0.1:5500}") String[] allowedOrigins) {
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < MIN_SECRET_BYTES) {
             // Falha logo na inicialização em vez de gerar tokens inseguros.
@@ -54,31 +58,36 @@ public class SecurityConfig {
                     "jwt.secret (JWT_SECRET) deve ter pelo menos " + MIN_SECRET_BYTES + " bytes");
         }
         this.secretKey = new SecretKeySpec(bytes, "HmacSHA256");
+        this.allowedOrigins = Arrays.stream(allowedOrigins).map(String::trim).filter(o -> !o.isEmpty()).toList();
     }
 
     /**
-     * Regras HTTP:
+     * Regras de acesso da API REST.
+     *
      * <ul>
+     *   <li>CORS ligado: usa o {@link #corsConfigurationSource()} abaixo.</li>
      *   <li>CSRF desligado: a API não usa cookies de sessão, só token no header.</li>
      *   <li>Sessão STATELESS: cada requisição se autentica sozinha pelo JWT.</li>
-     *   <li>{@code /v1/auth/**} é sempre público (é onde o usuário obtém o token).</li>
-     *   <li>{@code /error} é público: quando um controller lança erro (ex.: 409 no registro),
+     *   <li>{@code /v1/auth/**} é sempre público (é onde o usuário troca o ID Token do Google pelo da API).</li>
+     *   <li>{@code /error} é público: quando um controller lança erro (ex.: 409 no login),
      *       o Spring encaminha internamente para {@code /error} para montar o JSON de erro.
      *       Se essa rota exigisse token, um 409/400 numa rota pública viraria 401.</li>
-     *   <li><b>Qualquer outra rota exige um JWT válido</b> ({@code authenticated()}).
-     *       Sem token, com token adulterado ou expirado → 401.</li>
+     *   <li><b>Qualquer outra rota exige um JWT válido da API</b> ({@code authenticated()}).
+     *       Sem token, com token adulterado ou expirado → 401 (nunca redireciona para o Google).</li>
      *   <li>{@code oauth2ResourceServer().jwt()}: lê o header {@code Authorization: Bearer ...}
      *       e valida o token com o {@link JwtDecoder} abaixo.</li>
+     *   <li>Sem {@code formLogin}, {@code httpBasic} ou {@code oauth2Login}: não existe login com senha
+     *       nem por redirect. O único login é o {@code POST /v1/auth/google}.</li>
      * </ul>
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v1/auth/**", "/error").permitAll()
-                        // ALTERADO: antes era permitAll(); agora todas as outras rotas exigem login.
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .bearerTokenResolver(bearerTokenResolver())
@@ -87,10 +96,33 @@ public class SecurityConfig {
     }
 
     /**
+     * Feature: CORS.
+     *
+     * <p>O front (Vercel) e a API (Render) ficam em domínios diferentes; sem isso o navegador
+     * bloqueia as chamadas, inclusive o {@code POST /v1/auth/google}. As origens vêm da
+     * propriedade {@code cors.allowed-origins} (variável {@code CORS_ALLOWED_ORIGINS}, separada
+     * por vírgula). {@code allowCredentials} fica desligado porque o token vai no header, não em cookie.</p>
+     *
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowCredentials(false);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    /**
      * Decide de onde ler o Bearer token de cada requisição.
      *
      * <p>Nas rotas {@code /v1/auth/**} o header {@code Authorization} é ignorado: quem está
-     * fazendo login ou cadastro ainda não tem token válido. Sem isso, um token expirado,
+     * fazendo login ainda não tem token válido. Sem isso, um token expirado,
      * gerado com outro {@code JWT_SECRET} ou um placeholder vazio (ex.: {@code {{token}}}
      * no Postman) faria o login responder 401 antes mesmo de chegar no controller.</p>
      */
@@ -101,19 +133,17 @@ public class SecurityConfig {
                 : defaultResolver.resolve(request);
     }
 
-    /** BCrypt gera um hash com "salt" aleatório; o mesmo texto gera hashes diferentes a cada vez. */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     /** Assina os JWTs emitidos pelo AuthService. */
     @Bean
     public JwtEncoder jwtEncoder() {
         return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
     }
 
-    /** Valida assinatura e expiração dos JWTs recebidos nas requisições. */
+    /**
+     * Valida assinatura e expiração dos JWTs da API recebidos nas requisições.
+     * É o ÚNICO bean {@code JwtDecoder} da aplicação: o ID Token do Google é validado pelo
+     * {@code GoogleTokenVerifier}, que tem o seu próprio decoder (não é bean).
+     */
     @Bean
     public JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withSecretKey(secretKey)

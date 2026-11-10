@@ -16,7 +16,7 @@ import vivaleve.proj.service.UserService;
  * <p>ALTERADO — rotas removidas:</p>
  * <ul>
  *   <li>{@code POST /v1/users}: salvava a senha em texto puro e duplicava o cadastro.
- *       Use {@code POST /v1/auth/register}, que grava a senha com BCrypt.</li>
+ *       O cadastro agora acontece no primeiro login com Google ({@code POST /v1/auth/google}).</li>
  *   <li>{@code GET /v1/users}: devolvia TODOS os usuários com a entidade inteira,
  *       incluindo o hash da senha.</li>
  * </ul>
