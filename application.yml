@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   config:
     # Lê variáveis do arquivo .env na raiz (se existir). Copie .env.example para .env.
