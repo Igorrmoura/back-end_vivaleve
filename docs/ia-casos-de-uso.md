@@ -47,25 +47,33 @@ Camada de IA do back-end, usando o **Ollama Cloud** (`https://ollama.com/api/cha
 Front (chat.js) ──POST /v1/ai/chat──▶ AiController ──▶ AiService
                                                        ├─ CrisisDetector  (risco? resposta fixa)
                                                        ├─ PromptFactory   (monta system + histórico)
-                                                       ├─ AiClient ──▶ OllamaCloudClient ──▶ ollama.com/api/chat
+                                                       ├─ AiClient ──┬─▶ GroqClient        ──▶ api.groq.com/openai/v1/chat/completions
+                                                       │             └─▶ OllamaCloudClient ──▶ ollama.com/api/chat
                                                        └─ AiConversationRepository / AiMessageRepository
 ```
 
 - `AiClient` é uma interface: trocar de provedor = nova implementação, sem mexer no resto.
-- Se o Ollama falhar (sem chave, timeout, erro HTTP, resposta vazia), o usuário **não recebe erro**: recebe `status = FALLBACK` com o texto de `prompts/resposta-fallback.txt`.
+- **Provedor escolhido por `AI_PROVIDER`**: `groq` (plano gratuito, com limite de requisições) ou `ollama` (Ollama Cloud é pago por token; também aceita Ollama local em `http://localhost:11434`).
+- Se o provedor falhar (sem chave, timeout, erro HTTP, limite 429 do Groq, falta de crédito 402 do Ollama, resposta vazia), o usuário **não recebe erro**: recebe `status = FALLBACK` com o texto de `prompts/resposta-fallback.txt`.
+- Nos modelos `openai/gpt-oss-*` do Groq, enviamos `reasoning_effort: low` para o raciocínio interno não consumir todo o limite de tokens.
 - Chamadas ao modelo ficam fora de transação do banco (podem levar segundos).
 
-### Configuração (variáveis de ambiente)
+### Configuração (arquivo `.env` local ou variáveis de ambiente no Render)
+
+Copie `.env.example` para `.env` na raiz do back. O `.env` está no `.gitignore`.
 
 | Variável | Padrão | Observação |
 |---|---|---|
-| `OLLAMA_API_KEY` | (vazio) | **Obrigatória** para a IA responder. Criar em https://ollama.com/settings/keys. Nunca commitar. |
-| `OLLAMA_MODEL` | `gpt-oss:20b` | Qualquer modelo cloud do Ollama (ex.: `gpt-oss:120b`). |
-| `OLLAMA_BASE_URL` | `https://ollama.com` | |
+| `AI_PROVIDER` | `ollama` | `groq` ou `ollama`. O `.env.example` já vem com `groq`. |
+| `GROQ_API_KEY` | (vazio) | Chave grátis em https://console.groq.com/keys. Nunca commitar. |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Outros: `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (ver https://console.groq.com/docs/models). |
+| `OLLAMA_API_KEY` | (vazio) | Só com `AI_PROVIDER=ollama`. https://ollama.com/settings/keys (exige créditos). |
+| `OLLAMA_MODEL` | `gpt-oss:20b` | Na API cloud, sem o sufixo `-cloud`. |
+| `OLLAMA_BASE_URL` | `https://ollama.com` | `http://localhost:11434` para usar o Ollama instalado no PC (grátis). |
+| `SERVER_PORT` | `8080` | Troque se a porta estiver ocupada. |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5500,http://127.0.0.1:5500` | Adicionar a URL do front na Vercel. |
 
-No Render: *Environment* → adicionar `OLLAMA_API_KEY` (e `CORS_ALLOWED_ORIGINS` com a URL da Vercel).
-Localmente (PowerShell): `$env:OLLAMA_API_KEY="sua-chave"` antes de subir a aplicação.
+No Render: *Environment* → adicionar `AI_PROVIDER`, `GROQ_API_KEY` e `CORS_ALLOWED_ORIGINS` (com a URL da Vercel).
 
 ---
 

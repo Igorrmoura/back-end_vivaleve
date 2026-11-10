@@ -54,7 +54,7 @@ class AiServiceTest {
 
     @BeforeEach
     void setUp() {
-        AiProperties props = new AiProperties(null, "key", null, null, null, null, 10, null);
+        AiProperties props = new AiProperties(null, null, "key", null, null, null, null, 10, null, null);
         promptFactory = new PromptFactory(props);
         service = new AiService(aiClient, promptFactory, new CrisisDetector(), conversationRepository,
                 messageRepository, userRepository, entryRepository, statsService, props);

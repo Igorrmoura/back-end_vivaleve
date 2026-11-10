@@ -35,7 +35,7 @@ class OllamaCloudClientTest {
     private OllamaCloudClient clientWithKey(String key) {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://ollama.test");
         server = MockRestServiceServer.bindTo(builder).build();
-        AiProperties props = new AiProperties("https://ollama.test", key, "gpt-oss:20b", 0.7, 600, null, null, null);
+        AiProperties props = new AiProperties("ollama", "https://ollama.test", key, "gpt-oss:20b", 0.7, 600, null, null, null, null);
         return new OllamaCloudClient(builder.build(), props);
     }
 
