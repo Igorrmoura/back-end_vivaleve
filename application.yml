@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Lê variáveis do arquivo .env na raiz (se existir). Copie .env.example para .env.
+    import: optional:file:.env[.properties]
   datasource:
     url:  jdbc:postgresql://dpg-dbnila8u01pc73cs3lr0-a.oregon-postgres.render.com:5432/projeto_vivaleve?sslmode=require
     username: ${DB_USER}
