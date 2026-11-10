@@ -17,6 +17,12 @@ O projeto está sendo **reestruturado do zero**, agora com o desenvolvimento de 
 - **Deploy** Vercel and Render
 - **Infraestrutura** Docker
 
+##  IA (chat da Pluma)
+
+O chat usa o **Ollama Cloud**. Para a IA responder, defina a variável de ambiente `OLLAMA_API_KEY`
+(sem ela o chat continua funcionando, mas com a resposta padrão de fallback).
+Casos de uso, rotas, prompts e testes: [docs/ia-casos-de-uso.md](docs/ia-casos-de-uso.md).
+
 ##  Contexto
 
 Projeto desenvolvido para bem-estar e acessibilidade
