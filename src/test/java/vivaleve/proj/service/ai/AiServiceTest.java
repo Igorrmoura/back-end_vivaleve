@@ -54,7 +54,7 @@ class AiServiceTest {
 
     @BeforeEach
     void setUp() {
-        AiProperties props = new AiProperties(null, null, "key", null, null, null, null, 10, null, null);
+        AiProperties props = new AiProperties(null, "key", null, null, null, null, null, 10, null);
         promptFactory = new PromptFactory(props);
         service = new AiService(aiClient, promptFactory, new CrisisDetector(), conversationRepository,
                 messageRepository, userRepository, entryRepository, statsService, props);
@@ -69,14 +69,14 @@ class AiServiceTest {
     @Test
     void chatNovoChamaModeloPadronizaESalvaAsDuasMensagens() {
         when(aiClient.complete(anyList()))
-                .thenReturn(new AiCompletion("  **Oi, Ana!** Estou aqui.  ", "gpt-oss:20b", 50, 8, 900));
+                .thenReturn(new AiCompletion("  **Oi, Ana!** Estou aqui.  ", "openai/gpt-oss-20b", 50, 8, 900));
 
         AiResponse resp = service.chat(new ChatRequest(1L, null, "oi, tudo bem?", "Ana"));
 
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.SUCCESS);
         assertThat(resp.reply()).isEqualTo("Oi, Ana! Estou aqui.");
         assertThat(resp.useCase()).isEqualTo(AiUseCase.CHAT_APOIO);
-        assertThat(resp.model()).isEqualTo("gpt-oss:20b");
+        assertThat(resp.model()).isEqualTo("openai/gpt-oss-20b");
         assertThat(resp.crisisDetected()).isFalse();
         assertThat(resp.helpResources()).isEmpty();
 
@@ -125,7 +125,7 @@ class AiServiceTest {
     @Test
     void respostaVaziaDepoisDePadronizarViraFallback() {
         when(aiClient.complete(anyList()))
-                .thenReturn(new AiCompletion("<think>hmm</think>", "gpt-oss:20b", 1, 1, 1));
+                .thenReturn(new AiCompletion("<think>hmm</think>", "openai/gpt-oss-20b", 1, 1, 1));
 
         AiResponse resp = service.chat(new ChatRequest(1L, null, "oi", null));
 

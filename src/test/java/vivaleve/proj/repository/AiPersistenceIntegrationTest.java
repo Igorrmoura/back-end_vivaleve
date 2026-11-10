@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 /**
  * Armazenamento das interações (PL-25) de ponta a ponta com banco H2:
  * chat de 2 turnos -> mensagens gravadas com metadados -> listagem -> exclusão em cascata.
- * Só o cliente do Ollama é simulado.
+ * Só o cliente do Groq é simulado.
  */
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application-test.properties")
@@ -42,8 +42,8 @@ class AiPersistenceIntegrationTest {
         UserEntity user = userRepository.save(
                 UserEntity.builder().email("persist@pluma.com").password("123456").build());
         when(aiClient.complete(anyList()))
-                .thenReturn(new AiCompletion("Oi! Como você está?", "gpt-oss:20b", 120, 9, 850))
-                .thenReturn(new AiCompletion("Entendo, vamos respirar juntos?", "gpt-oss:20b", 180, 12, 700));
+                .thenReturn(new AiCompletion("Oi! Como você está?", "openai/gpt-oss-20b", 120, 9, 850))
+                .thenReturn(new AiCompletion("Entendo, vamos respirar juntos?", "openai/gpt-oss-20b", 180, 12, 700));
 
         AiResponse first = aiService.chat(new ChatRequest(user.getId(), null, "oi", "Ana"));
         AiResponse second = aiService.chat(new ChatRequest(user.getId(), first.conversationId(), "estou ansiosa", "Ana"));
@@ -62,7 +62,7 @@ class AiPersistenceIntegrationTest {
                 AiInteractionStatus.RECEIVED, AiInteractionStatus.SUCCESS);
 
         var stored = messageRepository.findById(second.messageId()).orElseThrow();
-        assertThat(stored.getModel()).isEqualTo("gpt-oss:20b");
+        assertThat(stored.getModel()).isEqualTo("openai/gpt-oss-20b");
         assertThat(stored.getPromptTokens()).isEqualTo(180);
         assertThat(stored.getResponseTokens()).isEqualTo(12);
         assertThat(stored.getLatencyMs()).isEqualTo(700);

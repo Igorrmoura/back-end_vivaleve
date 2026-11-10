@@ -7,33 +7,22 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
-import java.time.Duration;
 
 @Configuration
 @EnableConfigurationProperties(AiProperties.class)
 public class AiConfig {
 
-    /** RestClient do Ollama Cloud, com timeout de conexão e de leitura. */
-    @Bean
-    public RestClient ollamaRestClient(AiProperties props) {
-        return restClient(props.baseUrl(), props.timeout());
-    }
-
-    /** RestClient do Groq, com o mesmo timeout. */
+    /** RestClient do Groq, com timeout de conexão e de leitura. */
     @Bean
     public RestClient groqRestClient(AiProperties props) {
-        return restClient(props.groq().baseUrl(), props.timeout());
-    }
-
-    private static RestClient restClient(String baseUrl, Duration timeout) {
         HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(timeout)
+                .connectTimeout(props.timeout())
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        factory.setReadTimeout(timeout);
+        factory.setReadTimeout(props.timeout());
 
         return RestClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(props.baseUrl())
                 .requestFactory(factory)
                 .build();
     }

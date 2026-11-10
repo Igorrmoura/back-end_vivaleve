@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -16,13 +15,12 @@ import vivaleve.proj.config.AiProperties;
 import java.util.List;
 
 /**
- * Integração com o Groq (API compatível com OpenAI). Ativado com AI_PROVIDER=groq.
- * POST {groq.baseUrl}/chat/completions com "Authorization: Bearer GROQ_API_KEY".
+ * Integração com o Groq (PL-23), API compatível com OpenAI. Plano gratuito com limite de requisições.
+ * POST {baseUrl}/chat/completions com "Authorization: Bearer GROQ_API_KEY".
  * Docs: https://console.groq.com/docs/openai
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "pluma.ai.provider", havingValue = "groq")
 public class GroqClient implements AiClient {
 
     private final RestClient restClient;
@@ -35,17 +33,16 @@ public class GroqClient implements AiClient {
 
     @Override
     public AiCompletion complete(List<AiChatMessage> messages) {
-        AiProperties.Groq groq = props.groq();
-        if (!groq.hasApiKey()) {
+        if (!props.hasApiKey()) {
             throw new AiClientException("GROQ_API_KEY não configurada");
         }
 
         GroqChatRequest body = new GroqChatRequest(
-                groq.model(),
+                props.model(),
                 messages,
                 props.temperature(),
                 props.maxTokens(),
-                reasoningEffort(groq)
+                reasoningEffort(props)
         );
 
         long start = System.nanoTime();
@@ -54,13 +51,13 @@ public class GroqClient implements AiClient {
             response = restClient.post()
                     .uri("/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + groq.apiKey())
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + props.apiKey())
                     .body(body)
                     .retrieve()
                     .body(GroqChatResponse.class);
         } catch (RestClientException e) {
             // 429 = limite do plano gratuito atingido. Não loga o corpo: pode conter desabafos do usuário.
-            log.warn("Falha ao chamar Groq (modelo {}): {}", groq.model(), e.getMessage());
+            log.warn("Falha ao chamar Groq (modelo {}): {}", props.model(), e.getMessage());
             throw new AiClientException("Falha ao chamar o Groq", e);
         }
         long latencyMs = (System.nanoTime() - start) / 1_000_000;
@@ -75,7 +72,7 @@ public class GroqClient implements AiClient {
         Usage usage = response.usage();
         return new AiCompletion(
                 content,
-                response.model() != null ? response.model() : groq.model(),
+                response.model() != null ? response.model() : props.model(),
                 usage == null ? null : usage.promptTokens(),
                 usage == null ? null : usage.completionTokens(),
                 latencyMs
@@ -87,11 +84,11 @@ public class GroqClient implements AiClient {
      * Sem configuração explícita, usamos "low" neles para sobrar espaço para a resposta.
      * Outros modelos não recebem o campo (alguns rejeitam).
      */
-    static String reasoningEffort(AiProperties.Groq groq) {
-        if (groq.reasoningEffort() != null) {
-            return groq.reasoningEffort();
+    static String reasoningEffort(AiProperties props) {
+        if (props.reasoningEffort() != null) {
+            return props.reasoningEffort();
         }
-        return groq.model().startsWith("openai/gpt-oss") ? "low" : null;
+        return props.model().startsWith("openai/gpt-oss") ? "low" : null;
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

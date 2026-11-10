@@ -21,16 +21,10 @@ spring:
 
 pluma:
   ai:
-    # Quem responde o chat: "groq" (plano gratuito) ou "ollama"
-    provider: ${AI_PROVIDER:ollama}
-    groq:
-      # Chave grátis em https://console.groq.com/keys
-      api-key: ${GROQ_API_KEY:}
-      model: ${GROQ_MODEL:openai/gpt-oss-20b}
-    # Ollama Cloud: crie a chave em https://ollama.com/settings/keys
-    base-url: ${OLLAMA_BASE_URL:https://ollama.com}
-    api-key: ${OLLAMA_API_KEY:}
-    model: ${OLLAMA_MODEL:gpt-oss:20b}
+    # Groq (plano gratuito): chave em https://console.groq.com/keys
+    base-url: https://api.groq.com/openai/v1
+    api-key: ${GROQ_API_KEY:}
+    model: ${GROQ_MODEL:openai/gpt-oss-20b}
     temperature: 0.7
     max-tokens: 600
     timeout: 30s

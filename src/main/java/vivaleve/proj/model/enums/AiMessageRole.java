@@ -1,6 +1,6 @@
 package vivaleve.proj.model.enums;
 
-/** Quem escreveu a mensagem. Os valores em minúsculo são os aceitos pela API do Ollama. */
+/** Quem escreveu a mensagem. Os valores em minúsculo são os aceitos pela API do Groq (formato OpenAI). */
 public enum AiMessageRole {
     SYSTEM("system"),
     USER("user"),

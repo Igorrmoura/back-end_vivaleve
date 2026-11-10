@@ -19,7 +19,7 @@ O projeto está sendo **reestruturado do zero**, agora com o desenvolvimento de 
 
 ##  IA (chat da Pluma)
 
-O chat usa o **Groq** (plano gratuito) ou o **Ollama**, escolhido por `AI_PROVIDER` no `.env`. Defina `GROQ_API_KEY`
+O chat usa o **Groq** (plano gratuito). Defina `GROQ_API_KEY` no `.env`
 (sem ela o chat continua funcionando, mas com a resposta padrão de fallback).
 Casos de uso, rotas, prompts e testes: [docs/ia-casos-de-uso.md](docs/ia-casos-de-uso.md).
 

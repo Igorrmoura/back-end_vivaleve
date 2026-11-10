@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PromptFactoryTest {
 
     private final PromptFactory factory = new PromptFactory(
-            new AiProperties(null, null, null, null, null, null, null, null, 100, null));
+            new AiProperties(null, null, null, null, null, null, null, null, 100));
 
     @Test
     void systemPromptTemRegrasDeSegurancaEPlaceholdersPreenchidos() {

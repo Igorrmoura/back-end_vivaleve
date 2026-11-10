@@ -36,7 +36,7 @@ class AiControllerTest {
     void chatDevolveEnvelopePadrao() throws Exception {
         when(aiService.chat(any(ChatRequest.class))).thenReturn(new AiResponse(
                 10L, 21L, AiUseCase.CHAT_APOIO, AiInteractionStatus.SUCCESS, "Estou aqui com você.",
-                false, List.of(), "gpt-oss:20b", LocalDateTime.of(2026, 11, 10, 12, 0)));
+                false, List.of(), "openai/gpt-oss-20b", LocalDateTime.of(2026, 11, 10, 12, 0)));
 
         mvc.perform(post("/v1/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,14 +1,14 @@
 # IA no Pluma
 
-Camada de IA do back-end, usando o **Ollama Cloud** (`https://ollama.com/api/chat`) como modelo do chat.
+Camada de IA do back-end, usando o **Groq** (`https://api.groq.com/openai/v1`, plano gratuito) como modelo do chat.
 
 | Card | O que foi feito | Onde |
 |---|---|---|
 | PL-22 | Casos de uso definidos (abaixo) | `model/enums/AiUseCase.java`, este arquivo |
-| PL-23 | Serviço de integração com a IA | `service/ai/AiClient.java`, `OllamaCloudClient.java`, `AiService.java`, `controller/AiController.java`, `config/AiConfig.java` |
+| PL-23 | Serviço de integração com a IA | `service/ai/AiClient.java`, `GroqClient.java`, `AiService.java`, `controller/AiController.java`, `config/AiConfig.java` |
 | PL-24 | Prompts e respostas padronizadas | `src/main/resources/prompts/*.txt`, `service/ai/PromptFactory.java`, `dto/AiDtos.java` (`AiResponse`) |
 | PL-25 | Armazenamento das interações | `model/AiConversationEntity.java`, `model/AiMessageEntity.java`, `repository/Ai*Repository.java` |
-| PL-26 | Testes da camada de IA | `src/test/java/vivaleve/proj/**/Ai*Test.java`, `CrisisDetectorTest`, `PromptFactoryTest`, `OllamaCloudClientTest` |
+| PL-26 | Testes da camada de IA | `src/test/java/vivaleve/proj/**/Ai*Test.java`, `CrisisDetectorTest`, `PromptFactoryTest`, `GroqClientTest` |
 
 ---
 
@@ -47,15 +47,14 @@ Camada de IA do back-end, usando o **Ollama Cloud** (`https://ollama.com/api/cha
 Front (chat.js) ──POST /v1/ai/chat──▶ AiController ──▶ AiService
                                                        ├─ CrisisDetector  (risco? resposta fixa)
                                                        ├─ PromptFactory   (monta system + histórico)
-                                                       ├─ AiClient ──┬─▶ GroqClient        ──▶ api.groq.com/openai/v1/chat/completions
-                                                       │             └─▶ OllamaCloudClient ──▶ ollama.com/api/chat
+                                                       ├─ AiClient ──▶ GroqClient ──▶ api.groq.com/openai/v1/chat/completions
                                                        └─ AiConversationRepository / AiMessageRepository
 ```
 
 - `AiClient` é uma interface: trocar de provedor = nova implementação, sem mexer no resto.
-- **Provedor escolhido por `AI_PROVIDER`**: `groq` (plano gratuito, com limite de requisições) ou `ollama` (Ollama Cloud é pago por token; também aceita Ollama local em `http://localhost:11434`).
-- Se o provedor falhar (sem chave, timeout, erro HTTP, limite 429 do Groq, falta de crédito 402 do Ollama, resposta vazia), o usuário **não recebe erro**: recebe `status = FALLBACK` com o texto de `prompts/resposta-fallback.txt`.
-- Nos modelos `openai/gpt-oss-*` do Groq, enviamos `reasoning_effort: low` para o raciocínio interno não consumir todo o limite de tokens.
+- O plano gratuito do Groq tem limite de requisições por minuto/dia (ver https://console.groq.com/settings/limits).
+- Se o provedor falhar (sem chave, timeout, erro HTTP, limite 429 do plano gratuito, resposta vazia), o usuário **não recebe erro**: recebe `status = FALLBACK` com o texto de `prompts/resposta-fallback.txt`.
+- Nos modelos `openai/gpt-oss-*`, enviamos `reasoning_effort: low` para o raciocínio interno não consumir todo o limite de tokens.
 - Chamadas ao modelo ficam fora de transação do banco (podem levar segundos).
 
 ### Configuração (arquivo `.env` local ou variáveis de ambiente no Render)
@@ -64,16 +63,12 @@ Copie `.env.example` para `.env` na raiz do back. O `.env` está no `.gitignore`
 
 | Variável | Padrão | Observação |
 |---|---|---|
-| `AI_PROVIDER` | `ollama` | `groq` ou `ollama`. O `.env.example` já vem com `groq`. |
 | `GROQ_API_KEY` | (vazio) | Chave grátis em https://console.groq.com/keys. Nunca commitar. |
 | `GROQ_MODEL` | `openai/gpt-oss-20b` | Outros: `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (ver https://console.groq.com/docs/models). |
-| `OLLAMA_API_KEY` | (vazio) | Só com `AI_PROVIDER=ollama`. https://ollama.com/settings/keys (exige créditos). |
-| `OLLAMA_MODEL` | `gpt-oss:20b` | Na API cloud, sem o sufixo `-cloud`. |
-| `OLLAMA_BASE_URL` | `https://ollama.com` | `http://localhost:11434` para usar o Ollama instalado no PC (grátis). |
 | `SERVER_PORT` | `8080` | Troque se a porta estiver ocupada. |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5500,http://127.0.0.1:5500` | Adicionar a URL do front na Vercel. |
 
-No Render: *Environment* → adicionar `AI_PROVIDER`, `GROQ_API_KEY` e `CORS_ALLOWED_ORIGINS` (com a URL da Vercel).
+No Render: *Environment* → adicionar `GROQ_API_KEY` e `CORS_ALLOWED_ORIGINS` (com a URL da Vercel).
 
 ---
 
@@ -98,7 +93,7 @@ No Render: *Environment* → adicionar `AI_PROVIDER`, `GROQ_API_KEY` e `CORS_ALL
   "reply": "Sinto muito que o dia esteja pesado...",
   "crisisDetected": false,
   "helpResources": [],
-  "model": "gpt-oss:20b",
+  "model": "openai/gpt-oss-20b",
   "createdAt": "2026-11-10T14:03:21"
 }
 ```
@@ -175,13 +170,13 @@ Obs.: o login do front ainda é só localStorage; o `user.id` precisa vir do bac
 
 ## PL-26 — Testes
 
-Rodar: `./mvnw test` (não precisa de Postgres nem de chave do Ollama — usa H2 em memória e o Ollama simulado).
+Rodar: `./mvnw test` (não precisa de Postgres nem de chave do Groq — usa H2 em memória e o Groq simulado).
 
 | Classe | Tipo | O que cobre |
 |---|---|---|
 | `CrisisDetectorTest` | unitário | frases de risco com/sem acento, falsos positivos comuns, vazio |
 | `PromptFactoryTest` | unitário | templates carregam, placeholders preenchidos, ordem system/histórico/usuário, descrição de stats e registro, sanitização e corte |
-| `OllamaCloudClientTest` | HTTP simulado (`MockRestServiceServer`) | formato do JSON enviado, header Bearer, leitura de tokens, erro 500, resposta vazia, sem chave |
+| `GroqClientTest` | HTTP simulado (`MockRestServiceServer`) | formato OpenAI enviado, header Bearer, `reasoning_effort` só nos gpt-oss, leitura de tokens, limite 429, resposta vazia, sem chave |
 | `AiServiceTest` | unitário (Mockito) | sucesso, crise não chama modelo, fallback, histórico sem fallbacks, 404 de usuário/conversa/registro de outro usuário, insight e reflexão |
 | `AiControllerTest` | `@WebMvcTest` | rotas, validação (400), 404, 204, formato do envelope |
 | `AiPersistenceIntegrationTest` | integração (H2) | conversa de 2 turnos gravada com tokens/latência/modelo, listagem e exclusão |

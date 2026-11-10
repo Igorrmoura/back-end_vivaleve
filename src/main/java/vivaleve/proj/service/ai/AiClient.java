@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Contrato de qualquer provedor de LLM (PL-23).
- * Hoje a implementação é o {@link OllamaCloudClient}; trocar de provedor é só criar outra implementação.
+ * Hoje a implementação é o {@link GroqClient}; trocar de provedor é só criar outra implementação.
  */
 public interface AiClient {
 

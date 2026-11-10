@@ -29,8 +29,8 @@ class GroqClientTest {
     private GroqClient client(String key, String model) {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://groq.test/openai/v1");
         server = MockRestServiceServer.bindTo(builder).build();
-        AiProperties props = new AiProperties("groq", null, null, null, 0.7, 600, null, null, null,
-                new AiProperties.Groq("https://groq.test/openai/v1", key, model, null));
+        AiProperties props = new AiProperties("https://groq.test/openai/v1", key, model, null,
+                0.7, 600, null, null, null);
         return new GroqClient(builder.build(), props);
     }
 
