@@ -1,6 +1,8 @@
 package vivaleve.proj.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
@@ -11,12 +13,38 @@ import java.time.Instant;
  * padrão de {@link EntryDtos}. Records são imutáveis e já geram construtor,
  * getters, equals/hashCode e toString.</p>
  *
- * <p>ALTERADO (OAuth2 Google): {@code RegisterRequest} e {@code LoginRequest} (email + senha)
- * foram removidos. Login e cadastro agora usam apenas {@link GoogleLoginRequest}.</p>
+ * <p>Login com email + senha ({@link RegisterRequest}, {@link LoginRequest}) e com Google
+ * ({@link GoogleLoginRequest}). Os três devolvem o mesmo {@link AuthResponse}.</p>
  */
 public final class AuthDtos {
 
     private AuthDtos() {
+    }
+
+    /** Corpo de POST /v1/auth/register — cadastro com email + senha. */
+    public record RegisterRequest(
+            @NotBlank(message = "O email é obrigatório")
+            @Email(message = "Informe um email válido")
+            @Size(max = 100, message = "O email deve ter no máximo 100 caracteres")
+            String email,
+
+            @NotBlank(message = "A senha é obrigatória")
+            @Size(min = 8, max = 64, message = "A senha deve ter entre 8 e 64 caracteres")
+            String password,
+
+            @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres")
+            String name
+    ) {
+    }
+
+    /** Corpo de POST /v1/auth/login — login com email + senha. */
+    public record LoginRequest(
+            @NotBlank(message = "O email é obrigatório")
+            String email,
+
+            @NotBlank(message = "A senha é obrigatória")
+            String password
+    ) {
     }
 
     /**

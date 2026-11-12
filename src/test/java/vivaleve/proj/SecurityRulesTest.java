@@ -20,6 +20,8 @@ import vivaleve.proj.controller.AuthController;
 import vivaleve.proj.controller.EntryController;
 import vivaleve.proj.controller.StatsController;
 import vivaleve.proj.controller.UserController;
+import vivaleve.proj.dto.AuthDtos.LoginRequest;
+import vivaleve.proj.dto.AuthDtos.RegisterRequest;
 import vivaleve.proj.dto.UserResponseDto;
 import vivaleve.proj.service.AuthService;
 import vivaleve.proj.service.EntryService;
@@ -190,15 +192,57 @@ class SecurityRulesTest {
     }
 
     @Test
-    void rotasAntigasDeEmailESenhaNaoExistemMais() throws Exception {
-        String json = "{\"email\":\"a@a.com\",\"password\":\"senha12345\"}";
-        for (String rota : List.of("/v1/auth/login", "/v1/auth/register")) {
-            mvc.perform(post(rota).contentType(MediaType.APPLICATION_JSON).content(json))
-                    .andExpect(result -> {
-                        int s = result.getResponse().getStatus();
-                        if (s != 404 && s != 405) throw new AssertionError(rota + ": esperado 404/405, veio " + s);
-                    });
-        }
+    void cadastroComSenhaEhPublicoERetorna201() throws Exception {
+        mvc.perform(post("/v1/auth/register")
+                        .header("Authorization", "Bearer {{token}}") // token inválido é ignorado em /v1/auth/**
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@a.com\",\"password\":\"senha12345\",\"name\":\"Ana\"}"))
+                .andExpect(status().isCreated());
+        verify(authService).register(any(RegisterRequest.class));
+    }
+
+    @Test
+    void cadastroComSenhaCurtaOuEmailInvalidoRetorna400() throws Exception {
+        mvc.perform(post("/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@a.com\",\"password\":\"1234567\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nao-e-email\",\"password\":\"senha12345\"}"))
+                .andExpect(status().isBadRequest());
+        verify(authService, never()).register(any());
+    }
+
+    @Test
+    void cadastroComEmailRepetidoRetorna409() throws Exception {
+        when(authService.register(any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Este email já está cadastrado"));
+
+        mvc.perform(post("/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@a.com\",\"password\":\"senha12345\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void loginComSenhaEhPublico() throws Exception {
+        mvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@a.com\",\"password\":\"senha12345\"}"))
+                .andExpect(status().isOk());
+        verify(authService).login(any(LoginRequest.class));
+    }
+
+    @Test
+    void loginComSenhaErradaRetorna401() throws Exception {
+        when(authService.login(any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos"));
+
+        mvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@a.com\",\"password\":\"errada123\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

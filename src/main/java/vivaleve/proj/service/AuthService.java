@@ -2,7 +2,9 @@ package vivaleve.proj.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -12,27 +14,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import vivaleve.proj.dto.AuthDtos.AuthResponse;
-import vivaleve.proj.dto.UserResponseDto;
+import vivaleve.proj.dto.AuthDtos.LoginRequest;
+import vivaleve.proj.dto.AuthDtos.RegisterRequest;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.repository.UserRepository;
 import vivaleve.proj.service.GoogleTokenVerifier.GoogleUser;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Locale;
 
 /**
  * Regras de negócio de autenticação.
  *
- * <p>ALTERADO (OAuth2 Google): o login e o cadastro com email + senha foram removidos
- * (junto com o BCrypt). O único jeito de entrar é o botão do Google: o front manda o ID Token
- * para {@code POST /v1/auth/google} → {@link #loginWithGoogle(String)}.</p>
- *
- * <p>Features:</p>
+ * <p>Dois jeitos de entrar, que devolvem o mesmo JWT da API:</p>
  * <ul>
+ *   <li><b>Email + senha</b>: {@link #register(RegisterRequest)} e {@link #login(LoginRequest)}.
+ *       A senha é guardada só como hash BCrypt.</li>
  *   <li><b>Login/cadastro com Google</b>: se o usuário ainda não existir, cria a conta na hora —
  *       o primeiro login É o cadastro.</li>
- *   <li><b>Vínculo de contas antigas</b>: quem já tinha conta com email + senha entra com o
- *       Google do mesmo email e mantém todos os seus registros.</li>
+ *   <li><b>Vínculo de contas</b>: quem tem conta com email + senha entra com o Google do mesmo
+ *       email e mantém todos os seus registros. A senha é apagada nesse momento (ver
+ *       {@link #linkOrCreate(String, String)}).</li>
  *   <li><b>Emissão de JWT</b> (sem mudança): o token da API carrega o id interno do usuário no
  *       {@code sub} e o email em uma claim; expira após {@code jwt.expiration-seconds}.
  *       O token do Google só é usado uma vez, aqui no login — nas demais rotas vale o JWT da API.</li>
@@ -46,13 +49,98 @@ public class AuthService {
     private static final String ISSUER = "vivaleve-api";
     private static final String TOKEN_TYPE = "Bearer";
 
+    /** O BCrypt só aceita senhas de até 72 bytes (acentos ocupam 2 bytes em UTF-8). */
+    private static final int BCRYPT_MAX_BYTES = 72;
+
+    /** Mesma mensagem para email inexistente e senha errada: não revela quais emails têm conta. */
+    private static final String INVALID_LOGIN = "Email ou senha inválidos";
+    private static final String EMAIL_IN_USE = "Este email já está cadastrado";
+
     private final UserRepository userRepository;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final JwtEncoder jwtEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     /** Tempo de vida do token em segundos (padrão: 24h). */
     @Value("${jwt.expiration-seconds:86400}")
     private long expirationSeconds;
+
+    /** Hash usado quando o email não existe, para o login demorar o mesmo tempo nos dois casos. */
+    private volatile String dummyHash;
+
+    /**
+     * Cadastro com email + senha ({@code POST /v1/auth/register}). Já devolve o JWT (entra direto).
+     *
+     * @throws ResponseStatusException 409 se o email já tiver conta (com senha ou com Google);
+     *                                 400 se a senha passar do limite do BCrypt
+     */
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        String email = normalizeEmail(request.email());
+        if (exceedsBcryptLimit(request.password())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A senha é longa demais");
+        }
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, EMAIL_IN_USE);
+        }
+
+        UserEntity user = UserEntity.builder()
+                .email(email)
+                .password(passwordEncoder.encode(request.password()))
+                .name(blankToNull(request.name()))
+                .build();
+        try {
+            user = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            // Dois cadastros ao mesmo tempo com o mesmo email: o índice único do banco barra o segundo.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, EMAIL_IN_USE);
+        }
+        return buildAuthResponse(user);
+    }
+
+    /**
+     * Login com email + senha ({@code POST /v1/auth/login}).
+     *
+     * @throws ResponseStatusException 401 se o email não existir, a senha estiver errada ou a
+     *                                 conta só entrar pelo Google (sempre a mesma mensagem)
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        UserEntity user = userRepository.findByEmail(normalizeEmail(request.email())).orElse(null);
+        String hash = user == null ? null : user.getPassword();
+
+        if (!passwordMatches(request.password(), hash)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
+        }
+        return buildAuthResponse(user);
+    }
+
+    private boolean passwordMatches(String rawPassword, String hash) {
+        if (exceedsBcryptLimit(rawPassword)) {
+            return false; // o BCrypt lançaria erro (500); nenhuma senha cadastrada passa desse limite
+        }
+        if (hash == null) {
+            // Confere contra um hash qualquer só para gastar o mesmo tempo de uma senha errada.
+            passwordEncoder.matches(rawPassword, dummyHash());
+            return false;
+        }
+        return passwordEncoder.matches(rawPassword, hash);
+    }
+
+    private String dummyHash() {
+        if (dummyHash == null) {
+            dummyHash = passwordEncoder.encode("senha-que-nao-pertence-a-ninguem");
+        }
+        return dummyHash;
+    }
+
+    private static boolean exceedsBcryptLimit(String rawPassword) {
+        return rawPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES;
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
 
     /**
      * Login com Google ({@code POST /v1/auth/google}, usado pelo botão do Google no front).
@@ -104,9 +192,13 @@ public class AuthService {
      * Feature: vínculo de conta antiga ou criação de conta nova.
      *
      * <p>Só chega aqui quando nenhum usuário tem esse {@code sub}. Se existir um usuário com o
-     * mesmo email e SEM {@code sub}, é uma conta antiga (email + senha) — o Google garante que
+     * mesmo email e SEM {@code sub}, é uma conta de email + senha — o Google garante que
      * o email é verificado, então é seguro vinculá-la. Se o usuário com esse email já tiver
      * OUTRO {@code sub}, é outra conta Google (o email trocou de dono) e o acesso é negado.</p>
+     *
+     * <p><b>Segurança:</b> ao vincular, a senha é apagada. O cadastro com senha não confirma o
+     * email, então qualquer pessoa pode ter cadastrado o email de outra. Sem isso, quem criou a
+     * senha continuaria entrando na conta depois que o verdadeiro dono entrasse pelo Google.</p>
      */
     private UserEntity linkOrCreate(String googleSub, String email) {
         return userRepository.findByEmail(email)
@@ -116,6 +208,7 @@ public class AuthService {
                                 "Este email já está vinculado a outra conta Google");
                     }
                     existing.setGoogleSub(googleSub);
+                    existing.setPassword(null);
                     return existing;
                 })
                 .orElseGet(() -> UserEntity.builder()
