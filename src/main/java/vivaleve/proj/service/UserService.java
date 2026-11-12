@@ -5,6 +5,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import vivaleve.proj.dto.UserDto;
+import vivaleve.proj.exceptions.BadRequestExceptions;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.repository.UserRepository;
 
@@ -16,15 +17,12 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public void criarUser(UserDto userDto) {
+    public void criarUser(UserDto userDto) throws BadRequestExceptions {
         UserEntity user = userRepository.findByEmail(userDto.getEmail())
                 .orElse(null);
 
         if (user != null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Usuário já cadastrado com este email"
-            );
+            throw new BadRequestExceptions("Usuário já cadastrado com este email");
         }
 
         userRepository.save(UserEntity.builder()
