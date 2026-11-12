@@ -9,13 +9,6 @@ import vivaleve.proj.dto.UserResponseDto;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.repository.UserRepository;
 
-/**
- * Regras de negócio do perfil do usuário.
- *
- * <p>ALTERADO: {@code criarUser} (senha sem hash) e {@code listarUsers} (expunha todos os
- * usuários) foram removidos. O cadastro agora é responsabilidade do {@link AuthService},
- * feito automaticamente no primeiro login com Google.</p>
- */
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -47,3 +40,4 @@ public class UserService {
                 .build();
     }
 }
+
