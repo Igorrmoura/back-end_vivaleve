@@ -134,6 +134,7 @@ public class MoodLogService {
         return new MoodLogDto.MoodLogResponse(
                 m.getId(), m.getMood(), m.getNote(),
                 m.getImageUrl(), m.getLogDate(), m.getCreatedAt(),
-                new UserResponseDto(u.getId(), u.getEmail()));
+                new UserResponseDto(u.getId(), u.getEmail(), u.getName(), u.getPictureUrl()));
+
     }
 }

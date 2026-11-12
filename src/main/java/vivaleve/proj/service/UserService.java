@@ -1,15 +1,13 @@
 package vivaleve.proj.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import vivaleve.proj.dto.UserDto;
-import vivaleve.proj.exceptions.BadRequestExceptions;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import vivaleve.proj.dto.UserResponseDto;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.repository.UserRepository;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -17,21 +15,29 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public void criarUser(UserDto userDto) throws BadRequestExceptions {
-        UserEntity user = userRepository.findByEmail(userDto.getEmail())
-                .orElse(null);
+    /**
+     * Devolve os dados públicos do usuário autenticado.
+     * 404 se a conta foi apagada mas o token ainda não expirou.
+     */
+    @Transactional(readOnly = true)
+    public UserResponseDto buscarPerfil(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
-        if (user != null) {
-            throw new BadRequestExceptions("Usuário já cadastrado com este email");
-        }
-
-        userRepository.save(UserEntity.builder()
-                .email(userDto.getEmail())
-                .password(userDto.getPassword())
-                .build());
+        return toDto(user);
     }
 
-    public List<UserEntity> listarUsers() {
-        return userRepository.findAll();
+    /**
+     * NOVO — Conversão única entidade → DTO, usada aqui e no {@link AuthService}
+     * (antes cada um montava o DTO do seu jeito). Inclui nome e foto do Google.
+     */
+    static UserResponseDto toDto(UserEntity user) {
+        return UserResponseDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .pictureUrl(user.getPictureUrl())
+                .build();
     }
 }
+
