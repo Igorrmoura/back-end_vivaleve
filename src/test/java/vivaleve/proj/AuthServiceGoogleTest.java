@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -38,7 +39,8 @@ class AuthServiceGoogleTest {
 
     private final UserRepository repo = mock(UserRepository.class);
     private final GoogleTokenVerifier verifier = mock(GoogleTokenVerifier.class);
-    private final AuthService service = new AuthService(repo, verifier, new NimbusJwtEncoder(new ImmutableSecret<>(KEY)));
+    private final AuthService service = new AuthService(repo, verifier,
+            new NimbusJwtEncoder(new ImmutableSecret<>(KEY)), new BCryptPasswordEncoder());
 
     private final GoogleUser google = new GoogleUser("google-sub-123", "Ana@Gmail.com ", "Ana", "https://foto");
 
@@ -86,8 +88,8 @@ class AuthServiceGoogleTest {
     }
 
     @Test
-    void contaAntigaDeEmailESenhaEhVinculadaPeloEmail() {
-        UserEntity antiga = UserEntity.builder().email("ana@gmail.com").build(); // sem googleSub
+    void contaDeEmailESenhaEhVinculadaPeloEmailEPerdeASenha() {
+        UserEntity antiga = UserEntity.builder().email("ana@gmail.com").password("$2a$10$hash-qualquer").build(); // sem googleSub
         ReflectionTestUtils.setField(antiga, "id", 3L);
         when(repo.findByGoogleSub("google-sub-123")).thenReturn(Optional.empty());
         when(repo.findByEmail("ana@gmail.com")).thenReturn(Optional.of(antiga));
@@ -96,6 +98,8 @@ class AuthServiceGoogleTest {
 
         assertThat(resp.user().getId()).isEqualTo(3L); // mesmo usuário → mantém os registros
         assertThat(antiga.getGoogleSub()).isEqualTo("google-sub-123");
+        // quem cadastrou a senha pode não ser o dono do email: ela deixa de valer
+        assertThat(antiga.getPassword()).isNull();
     }
 
     @Test

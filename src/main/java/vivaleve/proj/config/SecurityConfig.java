@@ -8,6 +8,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -29,9 +31,10 @@ import java.util.List;
 /**
  * Configuração de segurança da API.
  *
- * <p>Login: o front usa o botão "Entrar com Google" e manda o ID Token para
- * {@code POST /v1/auth/google}, que devolve o JWT da API. A partir daí, toda requisição se
- * autentica com {@code Authorization: Bearer <JWT da API>} — sem sessão e sem cookie.</p>
+ * <p>Login: com email + senha ({@code POST /v1/auth/register} e {@code POST /v1/auth/login})
+ * ou com o botão "Entrar com Google" ({@code POST /v1/auth/google}). Os três devolvem o JWT
+ * da API. A partir daí, toda requisição se autentica com
+ * {@code Authorization: Bearer <JWT da API>} — sem sessão e sem cookie.</p>
  *
  * <p>Os tokens da API são assinados com HMAC-SHA256 usando a chave secreta {@code jwt.secret}.
  * A mesma chave assina e valida, então ela nunca deve ir para o repositório.</p>
@@ -68,7 +71,7 @@ public class SecurityConfig {
      *   <li>CORS ligado: usa o {@link #corsConfigurationSource()} abaixo.</li>
      *   <li>CSRF desligado: a API não usa cookies de sessão, só token no header.</li>
      *   <li>Sessão STATELESS: cada requisição se autentica sozinha pelo JWT.</li>
-     *   <li>{@code /v1/auth/**} é sempre público (é onde o usuário troca o ID Token do Google pelo da API).</li>
+     *   <li>{@code /v1/auth/**} é sempre público (cadastro, login com senha e login com Google).</li>
      *   <li>{@code /error} é público: quando um controller lança erro (ex.: 409 no login),
      *       o Spring encaminha internamente para {@code /error} para montar o JSON de erro.
      *       Se essa rota exigisse token, um 409/400 numa rota pública viraria 401.</li>
@@ -76,8 +79,8 @@ public class SecurityConfig {
      *       Sem token, com token adulterado ou expirado → 401 (nunca redireciona para o Google).</li>
      *   <li>{@code oauth2ResourceServer().jwt()}: lê o header {@code Authorization: Bearer ...}
      *       e valida o token com o {@link JwtDecoder} abaixo.</li>
-     *   <li>Sem {@code formLogin}, {@code httpBasic} ou {@code oauth2Login}: não existe login com senha
-     *       nem por redirect. O único login é o {@code POST /v1/auth/google}.</li>
+     *   <li>Sem {@code formLogin}, {@code httpBasic} ou {@code oauth2Login}: não existe login por
+     *       sessão nem por redirect. O login com senha é feito no AuthService, que devolve o JWT.</li>
      * </ul>
      */
     @Bean
@@ -131,6 +134,12 @@ public class SecurityConfig {
         return request -> request.getRequestURI().startsWith(request.getContextPath() + "/v1/auth/")
                 ? null
                 : defaultResolver.resolve(request);
+    }
+
+    /** Gera e confere os hashes BCrypt das senhas (cadastro e login com email + senha). */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /** Assina os JWTs emitidos pelo AuthService. */
