@@ -1,7 +1,6 @@
 package vivaleve.proj.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import vivaleve.proj.model.AiConversationEntity;
 import vivaleve.proj.model.AiMessageEntity;
@@ -20,7 +19,6 @@ public final class AiDtos {
 
     /** POST /v1/ai/chat — sem conversationId abre uma conversa nova. */
     public record ChatRequest(
-            @NotNull Long userId,
             Long conversationId,
             @NotBlank @Size(max = 2000) String message,
             @Size(max = 60) String userName
@@ -29,7 +27,6 @@ public final class AiDtos {
 
     /** POST /v1/ai/insights/mood — days aceita 7 ou 30 (padrão 7). */
     public record MoodInsightRequest(
-            @NotNull Long userId,
             Integer days,
             @Size(max = 60) String userName
     ) {
@@ -37,7 +34,6 @@ public final class AiDtos {
 
     /** POST /v1/ai/entries/{entryId}/reflection */
     public record EntryReflectionRequest(
-            @NotNull Long userId,
             @Size(max = 60) String userName
     ) {
     }

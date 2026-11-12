@@ -62,8 +62,8 @@ public class AiService {
     // ------------------------------------------------------------------ casos de uso
 
     /** CHAT_APOIO: conversa multi-turno da tela de chat. */
-    public AiResponse chat(ChatRequest request) {
-        UserEntity user = findUser(request.userId());
+    public AiResponse chat(Long userId, ChatRequest request) {
+        UserEntity user = findUser(userId);
         String message = request.message().strip();
 
         AiConversationEntity conversation;
@@ -72,7 +72,7 @@ public class AiService {
             conversation = newConversation(user, AiUseCase.CHAT_APOIO, promptFactory.titleFrom(message));
             history = List.of();
         } else {
-            conversation = findConversation(request.conversationId(), request.userId());
+            conversation = findConversation(request.conversationId(), userId);
             if (conversation.getUseCase() != AiUseCase.CHAT_APOIO) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta conversa não é do chat de apoio");
             }
@@ -85,10 +85,10 @@ public class AiService {
     }
 
     /** INSIGHT_HUMOR: leitura das estatísticas de humor do período. */
-    public AiResponse moodInsight(MoodInsightRequest request) {
-        UserEntity user = findUser(request.userId());
+    public AiResponse moodInsight(Long userId, MoodInsightRequest request) {
+        UserEntity user = findUser(userId);
         int days = request.days() == null ? 7 : request.days();
-        StatsSummary stats = statsService.gerarResumo(request.userId(), days);
+        StatsSummary stats = statsService.gerarResumo(userId, days);
 
         String context = promptFactory.describeStats(stats);
         AiConversationEntity conversation =
@@ -97,10 +97,10 @@ public class AiService {
     }
 
     /** REFLEXAO_REGISTRO: comentário sobre um registro. A nota do registro também passa pela checagem de risco. */
-    public AiResponse entryReflection(Long entryId, EntryReflectionRequest request) {
-        UserEntity user = findUser(request.userId());
+    public AiResponse entryReflection(Long userId, Long entryId, EntryReflectionRequest request) {
+        UserEntity user = findUser(userId);
         EntryEntity entry = entryRepository.findById(entryId)
-                .filter(e -> Objects.equals(e.getUser().getId(), request.userId()))
+                .filter(e -> Objects.equals(e.getUser().getId(), userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro não encontrado"));
 
         String context = promptFactory.describeEntry(entry);

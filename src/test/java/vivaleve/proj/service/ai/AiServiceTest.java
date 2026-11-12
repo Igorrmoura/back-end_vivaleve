@@ -71,7 +71,7 @@ class AiServiceTest {
         when(aiClient.complete(anyList()))
                 .thenReturn(new AiCompletion("  **Oi, Ana!** Estou aqui.  ", "openai/gpt-oss-20b", 50, 8, 900));
 
-        AiResponse resp = service.chat(new ChatRequest(1L, null, "oi, tudo bem?", "Ana"));
+        AiResponse resp = service.chat(1L, new ChatRequest(null, "oi, tudo bem?", "Ana"));
 
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.SUCCESS);
         assertThat(resp.reply()).isEqualTo("Oi, Ana! Estou aqui.");
@@ -99,7 +99,7 @@ class AiServiceTest {
 
     @Test
     void mensagemDeRiscoNaoChamaModeloEDevolveCvv() {
-        AiResponse resp = service.chat(new ChatRequest(1L, null, "não quero mais viver", null));
+        AiResponse resp = service.chat(1L, new ChatRequest(null, "não quero mais viver", null));
 
         verifyNoInteractions(aiClient);
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.CRISIS);
@@ -116,7 +116,7 @@ class AiServiceTest {
     void falhaDoModeloDevolveFallbackSemErroParaOUsuario() {
         when(aiClient.complete(anyList())).thenThrow(new AiClientException("timeout"));
 
-        AiResponse resp = service.chat(new ChatRequest(1L, null, "estou ansioso", null));
+        AiResponse resp = service.chat(1L, new ChatRequest(null, "estou ansioso", null));
 
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.FALLBACK);
         assertThat(resp.reply()).isEqualTo(promptFactory.fallbackReply());
@@ -127,7 +127,7 @@ class AiServiceTest {
         when(aiClient.complete(anyList()))
                 .thenReturn(new AiCompletion("<think>hmm</think>", "openai/gpt-oss-20b", 1, 1, 1));
 
-        AiResponse resp = service.chat(new ChatRequest(1L, null, "oi", null));
+        AiResponse resp = service.chat(1L, new ChatRequest(null, "oi", null));
 
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.FALLBACK);
     }
@@ -144,7 +144,7 @@ class AiServiceTest {
         ));
         when(aiClient.complete(anyList())).thenReturn(new AiCompletion("Entendo.", "m", 1, 1, 1));
 
-        service.chat(new ChatRequest(1L, 5L, "estou cansado", null));
+        service.chat(1L, new ChatRequest(5L, "estou cansado", null));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<AiChatMessage>> prompt = ArgumentCaptor.forClass(List.class);
@@ -160,7 +160,7 @@ class AiServiceTest {
     void conversaDeOutroUsuarioDa404() {
         when(conversationRepository.findByIdAndUser_Id(9L, 1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.chat(new ChatRequest(1L, 9L, "oi", null)))
+        assertThatThrownBy(() -> service.chat(1L, new ChatRequest(9L, "oi", null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Conversa não encontrada");
         verifyNoInteractions(aiClient);
@@ -171,14 +171,14 @@ class AiServiceTest {
         when(conversationRepository.findByIdAndUser_Id(5L, 1L))
                 .thenReturn(Optional.of(conversation(5L, AiUseCase.INSIGHT_HUMOR)));
 
-        assertThatThrownBy(() -> service.chat(new ChatRequest(1L, 5L, "oi", null)))
+        assertThatThrownBy(() -> service.chat(1L, new ChatRequest(5L, "oi", null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("chat de apoio");
     }
 
     @Test
     void usuarioInexistenteDa404() {
-        assertThatThrownBy(() -> service.chat(new ChatRequest(99L, null, "oi", null)))
+        assertThatThrownBy(() -> service.chat(99L, new ChatRequest(null, "oi", null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Usuário não encontrado");
     }
@@ -190,7 +190,7 @@ class AiServiceTest {
         when(statsService.gerarResumo(1L, 30)).thenReturn(stats);
         when(aiClient.complete(anyList())).thenReturn(new AiCompletion("Que tal começar hoje?", "m", 1, 1, 1));
 
-        AiResponse resp = service.moodInsight(new MoodInsightRequest(1L, 30, null));
+        AiResponse resp = service.moodInsight(1L, new MoodInsightRequest(30, null));
 
         assertThat(resp.useCase()).isEqualTo(AiUseCase.INSIGHT_HUMOR);
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.SUCCESS);
@@ -208,7 +208,7 @@ class AiServiceTest {
         entry.setUser(outro);
         when(entryRepository.findById(7L)).thenReturn(Optional.of(entry));
 
-        assertThatThrownBy(() -> service.entryReflection(7L, new EntryReflectionRequest(1L, null)))
+        assertThatThrownBy(() -> service.entryReflection(1L, 7L, new EntryReflectionRequest(null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Registro não encontrado");
         verifyNoInteractions(aiClient);
@@ -223,7 +223,7 @@ class AiServiceTest {
         entry.setNote("hoje pensei em me machucar");
         when(entryRepository.findById(7L)).thenReturn(Optional.of(entry));
 
-        AiResponse resp = service.entryReflection(7L, new EntryReflectionRequest(1L, null));
+        AiResponse resp = service.entryReflection(1L, 7L, new EntryReflectionRequest(null));
 
         assertThat(resp.status()).isEqualTo(AiInteractionStatus.CRISIS);
         verifyNoInteractions(aiClient);

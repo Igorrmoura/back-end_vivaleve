@@ -45,8 +45,8 @@ class AiPersistenceIntegrationTest {
                 .thenReturn(new AiCompletion("Oi! Como você está?", "openai/gpt-oss-20b", 120, 9, 850))
                 .thenReturn(new AiCompletion("Entendo, vamos respirar juntos?", "openai/gpt-oss-20b", 180, 12, 700));
 
-        AiResponse first = aiService.chat(new ChatRequest(user.getId(), null, "oi", "Ana"));
-        AiResponse second = aiService.chat(new ChatRequest(user.getId(), first.conversationId(), "estou ansiosa", "Ana"));
+        AiResponse first = aiService.chat(user.getId(), new ChatRequest(null, "oi", "Ana"));
+        AiResponse second = aiService.chat(user.getId(), new ChatRequest(first.conversationId(), "estou ansiosa", "Ana"));
 
         assertThat(second.conversationId()).isEqualTo(first.conversationId());
         assertThat(first.messageId()).isNotNull();
@@ -83,7 +83,7 @@ class AiPersistenceIntegrationTest {
                 UserEntity.builder().email("longo@pluma.com").password("123456").build());
         when(aiClient.complete(anyList())).thenReturn(new AiCompletion("ok", "m", 1, 1, 1));
 
-        AiResponse resp = aiService.chat(new ChatRequest(user.getId(), null, "x".repeat(2000), null));
+        AiResponse resp = aiService.chat(user.getId(), new ChatRequest(null, "x".repeat(2000), null));
 
         assertThat(aiService.listMessages(resp.conversationId(), user.getId()).getFirst().content()).hasSize(2000);
     }

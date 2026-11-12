@@ -22,7 +22,7 @@ Camada de IA do back-end, usando o **Groq** (`https://api.groq.com/openai/v1`, p
 - **Substitui:** as respostas fixas por palavra-chave que hoje estão em `js/chat.js` (`analisarTexto` / `getRandomResponse`).
 
 ### 2. `INSIGHT_HUMOR` — Leitura das estatísticas de humor (tela `historico.html`)
-- **Entrada:** `userId` e `days` (7 ou 30).
+- **Entrada:** `days` (7 ou 30). O usuário vem do token.
 - **O que a IA faz:** transforma o `StatsSummary` (já calculado pelo `StatsService`) em um texto curto e gentil: um ponto positivo real + um cuidado, sem inventar números.
 
 ### 3. `REFLEXAO_REGISTRO` — Comentário sobre um registro (telas `humor.html` / `diario.html`)
@@ -122,18 +122,20 @@ Isso permite: retomar conversas, mostrar histórico, medir custo (tokens) e temp
 
 ## Rotas
 
-| Método | Rota | Corpo / params |
+Todas exigem o header `Authorization: Bearer <token>` (o token devolvido por `/v1/auth/login`, `/v1/auth/register` ou `/v1/auth/google`).
+
+| Método | Rota | Corpo |
 |---|---|---|
-| POST | `/v1/ai/chat` | `{ "userId": 1, "conversationId": null, "message": "Estou ansioso", "userName": "Ana" }` |
-| POST | `/v1/ai/insights/mood` | `{ "userId": 1, "days": 7, "userName": "Ana" }` |
-| POST | `/v1/ai/entries/{entryId}/reflection` | `{ "userId": 1, "userName": "Ana" }` |
-| GET | `/v1/ai/conversations?userId=1` | lista de conversas |
-| GET | `/v1/ai/conversations/{id}/messages?userId=1` | mensagens em ordem |
-| DELETE | `/v1/ai/conversations/{id}?userId=1` | 204 |
+| POST | `/v1/ai/chat` | `{ "conversationId": null, "message": "Estou ansioso", "userName": "Ana" }` |
+| POST | `/v1/ai/insights/mood` | `{ "days": 7, "userName": "Ana" }` |
+| POST | `/v1/ai/entries/{entryId}/reflection` | `{ "userName": "Ana" }` |
+| GET | `/v1/ai/conversations` | lista de conversas |
+| GET | `/v1/ai/conversations/{id}/messages` | mensagens em ordem |
+| DELETE | `/v1/ai/conversations/{id}` | 204 |
 
-Erros: `400` (validação, `days` diferente de 7/30), `404` (usuário, conversa ou registro não encontrado / de outro usuário).
+Erros: `400` (validação, `days` diferente de 7/30), `401` (sem token ou token inválido/expirado), `404` (usuário, conversa ou registro não encontrado / de outro usuário).
 
-> Assim como as outras rotas do projeto, o `userId` ainda vem na requisição. Quando o JWT do `docs/estrutura.md` entrar, ele deve sair do corpo e vir do token.
+> O usuário vem SEMPRE do token (`CurrentUser.id(jwt)`), nunca de um `userId` enviado pelo front: assim ninguém lê ou apaga as conversas de outra pessoa.
 
 ### Ligando no front (`js/chat.js`)
 
@@ -144,13 +146,13 @@ const API_URL = 'https://SEU-BACKEND.onrender.com';
 
 async function perguntarPluma(texto) {
   const user = JSON.parse(localStorage.getItem('pluma_user') || '{}');
+  const token = localStorage.getItem('pluma_token'); // token salvo no login
   const conversationId = localStorage.getItem('pluma_chat_conversation_id');
 
   const res = await fetch(`${API_URL}/v1/ai/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({
-      userId: user.id,
       conversationId: conversationId ? Number(conversationId) : null,
       message: texto,
       userName: user.name
@@ -164,7 +166,7 @@ async function perguntarPluma(texto) {
 }
 ```
 
-Obs.: o login do front ainda é só localStorage; o `user.id` precisa vir do back (`POST /v1/users`) para isso funcionar.
+Obs.: o front precisa guardar o `token` devolvido pelo login (`/v1/auth/login`, `/v1/auth/register` ou `/v1/auth/google`). Se a API responder `401`, o token expirou: mandar o usuário para o login de novo.
 
 ---
 
@@ -178,5 +180,5 @@ Rodar: `./mvnw test` (não precisa de Postgres nem de chave do Groq — usa H2 e
 | `PromptFactoryTest` | unitário | templates carregam, placeholders preenchidos, ordem system/histórico/usuário, descrição de stats e registro, sanitização e corte |
 | `GroqClientTest` | HTTP simulado (`MockRestServiceServer`) | formato OpenAI enviado, header Bearer, `reasoning_effort` só nos gpt-oss, leitura de tokens, limite 429, resposta vazia, sem chave |
 | `AiServiceTest` | unitário (Mockito) | sucesso, crise não chama modelo, fallback, histórico sem fallbacks, 404 de usuário/conversa/registro de outro usuário, insight e reflexão |
-| `AiControllerTest` | `@WebMvcTest` | rotas, validação (400), 404, 204, formato do envelope |
+| `AiControllerTest` | `@WebMvcTest` + segurança real | rotas, 401 sem token, `userId` do cliente ignorado, validação (400), 404, 204, formato do envelope |
 | `AiPersistenceIntegrationTest` | integração (H2) | conversa de 2 turnos gravada com tokens/latência/modelo, listagem e exclusão |
