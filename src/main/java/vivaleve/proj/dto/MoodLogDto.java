@@ -6,6 +6,7 @@ import vivaleve.proj.model.enums.MoodType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class MoodLogDto {
 
@@ -25,6 +26,8 @@ public class MoodLogDto {
             LocalDateTime createdAt,
             UserResponseDto user      // novo
     ) {
+    }
 
+    public record MoodStatsResponse(Map<MoodType, Long> counts, long total) {
     }
 }

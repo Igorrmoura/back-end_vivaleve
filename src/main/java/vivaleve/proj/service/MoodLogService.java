@@ -54,10 +54,15 @@ public class MoodLogService {
     }
 
     @Transactional(readOnly = true)
-    public MoodLogDto.MoodLogResponse getToday(Long userId) {
-        return moodLogRepository.findByUserIdAndLogDate(userId, LocalDate.now(ZONE))
+    public List<MoodLogDto.MoodLogResponse> getToday(Long userId) {
+
+        LocalDate today = LocalDate.now(ZONE);
+
+        return moodLogRepository
+                .findAllByUserIdAndLogDateOrderByCreatedAtDesc(userId, today)
+                .stream()
                 .map(this::toResponse)
-                .orElseThrow(() -> new NotFoundException("Nenhum registro hoje"));
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -78,13 +83,22 @@ public class MoodLogService {
     }
 
     @Transactional
-    public MoodLogDto.MoodLogResponse update(Long userId, Long id, MoodLogDto.MoodLogRequest req, MultipartFile image) {
+    public MoodLogDto.MoodLogResponse update(
+            Long userId,
+            Long id,
+            MoodLogDto.MoodLogRequest req,
+            MultipartFile image) {
+
         MoodLogEntity log = findOwned(userId, id);
+
         log.setMood(req.mood());
         log.setNote(req.note());
 
-        if (image != null && !image.isEmpty()) log.setImageUrl(saveImage(image));
-        return toResponse(log);   // dirty checking salva sozinho
+        if (image != null && !image.isEmpty()) {
+            log.setImageUrl(saveImage(image));
+        }
+
+        return toResponse(moodLogRepository.save(log));
     }
 
     @Transactional

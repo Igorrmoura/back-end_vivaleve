@@ -21,46 +21,58 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MoodLogController {
 
-        private final MoodLogService service;
+    private final MoodLogService service;
 
-        @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-        public ResponseEntity<MoodLogDto.MoodLogResponse> create(
-                @RequestParam Long userId,   // trocar pelo usuário autenticado (JWT)
-                @RequestParam @NotNull MoodType mood,
-                @RequestParam(required = false) @Size(max = 500) String note,
-                @RequestParam(required = false) MultipartFile image) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<MoodLogDto.MoodLogResponse> create(
+            @RequestParam Long userId,   // trocar pelo usuário autenticado (JWT)
+            @RequestParam @NotNull MoodType mood,
+            @RequestParam(required = false) @Size(max = 500) String note,
+            @RequestParam(required = false) MultipartFile image) {
 
-            var response = service.create(userId, new MoodLogDto.MoodLogRequest(mood, note), image);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        }
+        var response = service.create(userId, new MoodLogDto.MoodLogRequest(mood, note), image);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
-        @GetMapping("/today")
-        public MoodLogDto.MoodLogResponse today(@RequestParam Long userId) {
-            return service.getToday(userId);
-        }
+    @GetMapping("/today")
+    public List<MoodLogDto.MoodLogResponse> today(
+            @RequestParam Long userId) {
 
-        @GetMapping
-        public Page<MoodLogDto.MoodLogResponse> history(@RequestParam Long userId, Pageable pageable) {
-            return service.history(userId, pageable);
-        }
+        return service.getToday(userId);
+    }
+
+    @GetMapping
+    public Page<MoodLogDto.MoodLogResponse> history(@RequestParam Long userId, Pageable pageable) {
+        return service.history(userId, pageable);
+    }
 
     @GetMapping("/all")
     public List<MoodLogDto.MoodLogResponse> listAll(@RequestParam Long userId) {
         return service.listAll(userId);
     }
 
-        @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-        public MoodLogDto.MoodLogResponse update(@PathVariable Long id, @RequestParam Long userId,
-                                                 @RequestParam @NotNull MoodType mood,
-                                                 @RequestParam(required = false) String note,
-                                                 @RequestParam(required = false) MultipartFile image) {
-            return service.update(userId, id, new MoodLogDto.MoodLogRequest(mood, note), image);
-        }
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<MoodLogDto.MoodLogResponse> update(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            @RequestParam @NotNull MoodType mood,
+            @RequestParam(required = false) @Size(max = 500) String note,
+            @RequestParam(required = false) MultipartFile image) {
 
-        @DeleteMapping("/{id}")
-        public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
-            service.delete(userId, id);
-            return ResponseEntity.noContent().build();
-        }
+        var response = service.update(
+                userId,
+                id,
+                new MoodLogDto.MoodLogRequest(mood, note),
+                image
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
+        service.delete(userId, id);
+        return ResponseEntity.noContent().build();
+    }
 }
 

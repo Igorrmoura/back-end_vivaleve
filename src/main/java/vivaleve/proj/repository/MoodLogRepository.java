@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import vivaleve.proj.model.MoodLogEntity;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,13 +30,18 @@ public interface MoodLogRepository extends JpaRepository<MoodLogEntity, Long> {
 
     // útil para estatísticas (aba Histórico)
     @Query("""
-        SELECT m.mood, COUNT(m) FROM MoodLogEntity m
-        WHERE m.user.id = :userId AND m.logDate BETWEEN :start AND :end
-        GROUP BY m.mood
-    """)
+                SELECT m.mood, COUNT(m) FROM MoodLogEntity m
+                WHERE m.user.id = :userId AND m.logDate BETWEEN :start AND :end
+                GROUP BY m.mood
+            """)
     List<Object[]> countByMood(
             @Param("userId") Long userId,
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
+    );
+
+    List<MoodLogEntity> findAllByUserIdAndLogDateOrderByCreatedAtDesc(
+            Long userId,
+            LocalDate logDate
     );
 }
