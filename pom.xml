@@ -74,6 +74,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
+
+        <!-- Banco em memória só para os testes (não precisa do Postgres do Render) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
