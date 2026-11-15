@@ -1,0 +1,15 @@
+# Fica fora da imagem: o build só precisa do pom.xml e da pasta src.
+target/
+.git/
+.github/
+.idea/
+.vscode/
+.mvn/
+docs/
+mvnw
+mvnw.cmd
+*.md
+
+# Segredos nunca entram na imagem (as variáveis chegam pelo docker-compose).
+.env
+.env.*
