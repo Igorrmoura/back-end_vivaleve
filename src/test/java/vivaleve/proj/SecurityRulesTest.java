@@ -273,10 +273,10 @@ class SecurityRulesTest {
     @Test
     void corsPermiteOFrontDaVercel() throws Exception {
         mvc.perform(options("/v1/ai/chat")
-                        .header("Origin", "https://front-endvivaleve.vercel.app")
+                        .header("Origin", "https://projetopluma.vercel.app")
                         .header("Access-Control-Request-Method", "POST"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "https://front-endvivaleve.vercel.app"));
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://projetopluma.vercel.app"));
     }
 
     @Test
