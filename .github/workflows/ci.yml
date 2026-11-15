@@ -1,10 +1,10 @@
 name: CI
 
-# Roda em todo push (qualquer branch) e em todo Pull Request para develop/main.
+# Roda em todo push (qualquer branch) e em todo Pull Request para a main.
 on:
   push:
   pull_request:
-    branches: [develop, main]
+    branches: [main]
 
 # Se subir outro push na mesma branch, cancela a execução antiga.
 concurrency:
@@ -16,7 +16,7 @@ jobs:
     name: Compila e roda os testes
     runs-on: ubuntu-latest
     steps:
-      # Em PR, o GitHub já faz checkout do resultado do merge (sua branch + develop),
+      # Em PR, o GitHub já faz checkout do resultado do merge (sua branch + main),
       # então os testes rodam no código como ele vai ficar depois de mesclar.
       - uses: actions/checkout@v4
 
@@ -47,27 +47,27 @@ jobs:
       - name: Testes
         run: bash mvnw -B verify
 
-  conflito-com-develop:
-    name: Verifica conflito com a develop
+  conflito-com-main:
+    name: Verifica conflito com a main
     # Só nas branches de feature. (Em PR com conflito o GitHub nem roda o workflow,
     # por isso a checagem é feita no push.)
-    if: github.event_name == 'push' && github.ref_name != 'develop' && github.ref_name != 'main'
+    if: github.event_name == 'push' && github.ref_name != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Tenta mesclar a develop nesta branch (sem salvar)
+      - name: Tenta mesclar a main nesta branch (sem salvar)
         run: |
           git config user.name "ci"
           git config user.email "ci@example.com"
-          if git merge --no-commit --no-ff origin/develop; then
-            echo "Sem conflito com a develop." >> "$GITHUB_STEP_SUMMARY"
+          if git merge --no-commit --no-ff origin/main; then
+            echo "Sem conflito com a main." >> "$GITHUB_STEP_SUMMARY"
           else
             {
-              echo "## Conflito com a develop"
-              echo "Rode \`git pull origin develop\` na sua máquina e resolva estes arquivos:"
+              echo "## Conflito com a main"
+              echo "Rode \`git pull origin main\` na sua máquina e resolva estes arquivos:"
               echo
               git diff --name-only --diff-filter=U | sed 's/^/- /'
             } >> "$GITHUB_STEP_SUMMARY"
