@@ -7,6 +7,7 @@ import vivaleve.proj.dto.HistoryDto;
 import vivaleve.proj.exceptions.BadRequestExceptions;
 import vivaleve.proj.model.MoodLogEntity;
 import vivaleve.proj.model.enums.MoodType;
+import vivaleve.proj.repository.BreathingSessionRepository;
 import vivaleve.proj.repository.MoodLogRepository;
 
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ public class HistoryService {
             ZoneId.of("America/Sao_Paulo");
 
     private final MoodLogRepository moodLogRepository;
+    private final BreathingSessionRepository breathingSessionRepository;
 
     @Transactional(readOnly = true)
     public HistoryDto.SummaryResponse summary(Long userId) {
@@ -33,7 +35,7 @@ public class HistoryService {
                 moodLogRepository.countByUserId(userId),
                 currentStreak(datesDesc, LocalDate.now(ZONE)),
                 bestStreak(datesDesc),
-                0L // TODO: sessões de respiração
+                breathingSessionRepository.countByUser_Id(userId)
         );
     }
 
