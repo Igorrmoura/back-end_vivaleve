@@ -271,6 +271,15 @@ class SecurityRulesTest {
     }
 
     @Test
+    void corsPermiteOFrontDaVercel() throws Exception {
+        mvc.perform(options("/v1/ai/chat")
+                        .header("Origin", "https://front-endvivaleve.vercel.app")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://front-endvivaleve.vercel.app"));
+    }
+
+    @Test
     void fluxoDeRedirectFoiRemovido() throws Exception {
         // O login por redirect (oauth2Login) saiu: essas URLs agora são rotas comuns da API,
         // protegidas como qualquer outra → 401 sem token, nunca um redirect para o Google.
