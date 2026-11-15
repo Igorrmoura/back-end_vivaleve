@@ -1,0 +1,54 @@
+# Sobe a API + um Postgres local.
+#
+#   1. Copie .env.example para .env e preencha (JWT_SECRET e GOOGLE_CLIENT_ID são obrigatórios).
+#   2. docker compose up --build
+#   3. API em http://localhost:8080 (ou na SERVER_PORT do .env)
+#
+# O docker compose lê o .env da raiz sozinho para preencher os ${...} abaixo.
+
+services:
+  api:
+    build: .
+    container_name: vivaleve-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # porta do seu PC : porta dentro do container (sempre 8080)
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      SERVER_PORT: 8080
+      # Sobrescreve a URL do Render que está no application.yml e aponta para o Postgres abaixo.
+      # Para usar o banco do Render pelo Docker, defina DB_URL (e DB_USER/DB_PASSWORD do Render) no .env.
+      SPRING_DATASOURCE_URL: ${DB_URL:-jdbc:postgresql://db:5432/vivaleve}
+      DB_USER: ${DB_USER:-vivaleve}
+      DB_PASSWORD: ${DB_PASSWORD:-vivaleve}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (pelo menos 32 caracteres)}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?defina GOOGLE_CLIENT_ID no .env}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5500,http://127.0.0.1:5500}
+
+  db:
+    image: postgres:17-alpine
+    container_name: vivaleve-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vivaleve
+      POSTGRES_USER: ${DB_USER:-vivaleve}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vivaleve}
+    ports:
+      # Exposto em 5433 no PC para não brigar com um Postgres já instalado (DBeaver/pgAdmin: localhost:5433).
+      - "5433:5432"
+    volumes:
+      # Os dados sobrevivem a "docker compose down" (para apagar tudo: docker compose down -v).
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:
