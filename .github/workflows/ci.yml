@@ -26,6 +26,23 @@ jobs:
           java-version: '21'
           cache: maven
 
+      # Guarda o Maven que o mvnw baixa (~/.m2/wrapper), para não baixar de novo a cada execução.
+      - name: Cache do Maven Wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
+
+      # Se o download do Maven falhar (instabilidade de rede), tenta de novo antes de desistir.
+      - name: Baixa o Maven (com nova tentativa)
+        run: |
+          for tentativa in 1 2 3; do
+            bash mvnw -B -v && exit 0
+            echo "Falha ao baixar o Maven (tentativa $tentativa). Tentando de novo em 15s..."
+            sleep 15
+          done
+          exit 1
+
       # Os testes usam H2 em memória (application-test.properties): não precisa de banco nem de chave.
       - name: Testes
         run: bash mvnw -B verify
