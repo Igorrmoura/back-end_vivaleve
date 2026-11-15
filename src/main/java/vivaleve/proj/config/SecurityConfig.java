@@ -54,7 +54,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             @Value("${jwt.secret}") String secret,
-            @Value("${cors.allowed-origins:https://front-endvivaleve.vercel.app,http://localhost:5500,http://127.0.0.1:5500}") String[] allowedOrigins) {
+            @Value("${cors.allowed-origins:https://projetopluma.vercel.app,http://localhost:5500,http://127.0.0.1:5500}") String[] allowedOrigins) {
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < MIN_SECRET_BYTES) {
             // Falha logo na inicialização em vez de gerar tokens inseguros.

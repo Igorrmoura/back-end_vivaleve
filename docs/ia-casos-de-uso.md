@@ -66,7 +66,7 @@ Copie `.env.example` para `.env` na raiz do back. O `.env` está no `.gitignore`
 | `GROQ_API_KEY` | (vazio) | Chave grátis em https://console.groq.com/keys. Nunca commitar. |
 | `GROQ_MODEL` | `openai/gpt-oss-20b` | Outros: `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (ver https://console.groq.com/docs/models). |
 | `SERVER_PORT` | `8080` | Troque se a porta estiver ocupada. |
-| `CORS_ALLOWED_ORIGINS` | `https://front-endvivaleve.vercel.app,http://localhost:5500,http://127.0.0.1:5500` | Front na Vercel já incluído; se definir no Render, manter a URL da Vercel na lista. |
+| `CORS_ALLOWED_ORIGINS` | `https://projetopluma.vercel.app,http://localhost:5500,http://127.0.0.1:5500` | Front na Vercel já incluído; se definir no Render, manter https://projetopluma.vercel.app na lista. |
 
 No Render: *Environment* → adicionar `GROQ_API_KEY` e `CORS_ALLOWED_ORIGINS` (com a URL da Vercel).
 
