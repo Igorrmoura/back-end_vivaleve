@@ -356,4 +356,4 @@ Gustavo Ferrão
 
 ---
 
-<p align="center">Projeto acadêmico · Pluma 🪶</p>
+<p align="center">· Pluma 🪶</p>
