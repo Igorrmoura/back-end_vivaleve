@@ -1,6 +1,6 @@
 package vivaleve.proj.dto;
 
-import vivaleve.proj.model.enums.Mood;
+import vivaleve.proj.model.enums.MoodType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,7 +15,7 @@ public final class StatsDtos {
             LocalDate startDate,
             LocalDate endDate,
             long totalEntries,
-            Mood predominantMood,
+            MoodType predominantMood,
             int currentStreak,
             int longestStreak,
             List<MoodEvolutionPoint> evolution,
@@ -30,7 +30,7 @@ public final class StatsDtos {
     }
 
     public record MoodDistributionItem(
-            Mood mood,
+            MoodType mood,
             long count,
             double percentage
     ) {

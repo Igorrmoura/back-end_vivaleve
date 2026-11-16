@@ -32,7 +32,7 @@ public final class AiDtos {
     ) {
     }
 
-    /** POST /v1/ai/entries/{entryId}/reflection */
+    /** POST /v1/ai/mood-logs/{moodLogId}/reflection */
     public record EntryReflectionRequest(
             @Size(max = 60) String userName
     ) {

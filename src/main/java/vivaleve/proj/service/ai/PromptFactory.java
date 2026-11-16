@@ -6,11 +6,11 @@ import vivaleve.proj.config.AiProperties;
 import vivaleve.proj.dto.StatsDtos.MoodDistributionItem;
 import vivaleve.proj.dto.StatsDtos.StatsSummary;
 import vivaleve.proj.model.AiMessageEntity;
-import vivaleve.proj.model.EntryEntity;
+import vivaleve.proj.model.MoodLogEntity;
 import vivaleve.proj.model.enums.Activity;
 import vivaleve.proj.model.enums.AiMessageRole;
 import vivaleve.proj.model.enums.AiUseCase;
-import vivaleve.proj.model.enums.Mood;
+import vivaleve.proj.model.enums.MoodType;
 import vivaleve.proj.service.ai.AiClient.AiChatMessage;
 
 import java.io.IOException;
@@ -33,9 +33,9 @@ public class PromptFactory {
             AiUseCase.REFLEXAO_REGISTRO, 80
     );
 
-    private static final Map<Mood, String> HUMOR_PT = Map.of(
-            Mood.GREAT, "ótimo", Mood.GOOD, "bem", Mood.NEUTRAL, "neutro",
-            Mood.BAD, "mal", Mood.AWFUL, "muito mal"
+    private static final Map<MoodType, String> HUMOR_PT = Map.of(
+            MoodType.OTIMO, "ótimo", MoodType.BEM, "bem", MoodType.MAIS_OU_MENOS, "mais ou menos",
+            MoodType.MAL, "mal", MoodType.DEPRESSIVO, "depressivo", MoodType.ANSIOSO, "ansioso"
     );
 
     private static final Map<Activity, String> ATIVIDADE_PT = Map.ofEntries(
@@ -86,7 +86,7 @@ public class PromptFactory {
     }
 
     /** Reflexão: system + dados do registro em texto. */
-    public List<AiChatMessage> buildEntryReflection(String userName, EntryEntity entry) {
+    public List<AiChatMessage> buildEntryReflection(String userName, MoodLogEntity entry) {
         return List.of(
                 AiChatMessage.system(systemPrompt(AiUseCase.REFLEXAO_REGISTRO, userName)),
                 AiChatMessage.user(describeEntry(entry))
@@ -122,18 +122,18 @@ public class PromptFactory {
             String evo = s.evolution().stream()
                     .map(p -> p.date() + "=" + p.averageScore())
                     .collect(Collectors.joining(", "));
-            sb.append("- Média diária (5=ótimo, 1=muito mal): ").append(evo).append('\n');
+            sb.append("- Média diária (5=ótimo, 1=depressivo, 0=ansioso): ").append(evo).append('\n');
         }
         return sb.toString().trim();
     }
 
     /** Texto enviado ao modelo na reflexão de um registro. */
-    public String describeEntry(EntryEntity e) {
+    public String describeEntry(MoodLogEntity e) {
         String atividades = (e.getActivities() == null || e.getActivities().isEmpty())
                 ? "nenhuma informada"
                 : e.getActivities().stream().map(ATIVIDADE_PT::get).sorted().collect(Collectors.joining(", "));
         String nota = (e.getNote() == null || e.getNote().isBlank()) ? "sem nota" : "\"" + e.getNote().trim() + "\"";
-        return "Registro do dia " + e.getDate() + ":\n"
+        return "Registro do dia " + e.getLogDate() + ":\n"
                 + "- Humor: " + HUMOR_PT.get(e.getMood()) + '\n'
                 + "- Atividades: " + atividades + '\n'
                 + "- Nota: " + nota;

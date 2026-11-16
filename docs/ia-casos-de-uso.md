@@ -26,7 +26,7 @@ Camada de IA do back-end, usando o **Groq** (`https://api.groq.com/openai/v1`, p
 - **O que a IA faz:** transforma o `StatsSummary` (já calculado pelo `StatsService`) em um texto curto e gentil: um ponto positivo real + um cuidado, sem inventar números.
 
 ### 3. `REFLEXAO_REGISTRO` — Comentário sobre um registro (telas `humor.html` / `diario.html`)
-- **Entrada:** id do registro (`EntryEntity`) do próprio usuário.
+- **Entrada:** id do registro de humor (`MoodLogEntity`, tabela `registros_humor`) do próprio usuário.
 - **O que a IA faz:** comenta humor + atividades + nota em até 2 parágrafos, sem conclusões clínicas.
 
 ### Regra transversal — Detecção de risco (sem IA)
@@ -128,7 +128,7 @@ Todas exigem o header `Authorization: Bearer <token>` (o token devolvido por `/v
 |---|---|---|
 | POST | `/v1/ai/chat` | `{ "conversationId": null, "message": "Estou ansioso", "userName": "Ana" }` |
 | POST | `/v1/ai/insights/mood` | `{ "days": 7, "userName": "Ana" }` |
-| POST | `/v1/ai/entries/{entryId}/reflection` | `{ "userName": "Ana" }` |
+| POST | `/v1/ai/mood-logs/{moodLogId}/reflection` | `{ "userName": "Ana" }` |
 | GET | `/v1/ai/conversations` | lista de conversas |
 | GET | `/v1/ai/conversations/{id}/messages` | mensagens em ordem |
 | DELETE | `/v1/ai/conversations/{id}` | 204 |

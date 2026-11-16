@@ -17,14 +17,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 import vivaleve.proj.config.SecurityConfig;
 import vivaleve.proj.controller.AuthController;
-import vivaleve.proj.controller.EntryController;
+import vivaleve.proj.controller.MoodLogController;
 import vivaleve.proj.controller.StatsController;
 import vivaleve.proj.controller.UserController;
 import vivaleve.proj.dto.AuthDtos.LoginRequest;
 import vivaleve.proj.dto.AuthDtos.RegisterRequest;
 import vivaleve.proj.dto.UserResponseDto;
 import vivaleve.proj.service.AuthService;
-import vivaleve.proj.service.EntryService;
+import vivaleve.proj.model.enums.Activity;
+import vivaleve.proj.model.enums.MoodType;
+import vivaleve.proj.service.MoodLogService;
 import vivaleve.proj.service.StatsService;
 import vivaleve.proj.service.UserService;
 
@@ -32,6 +34,8 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Testa as regras do SecurityConfig de ponta a ponta na camada web (sem banco):
  * tokens são gerados com o mesmo JwtEncoder da aplicação e os services são mocks.
  */
-@WebMvcTest(controllers = {AuthController.class, EntryController.class, StatsController.class, UserController.class})
+@WebMvcTest(controllers = {AuthController.class, MoodLogController.class, StatsController.class, UserController.class})
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = {
         "jwt.secret=segredo-de-teste-com-pelo-menos-32-bytes!!"
@@ -56,7 +60,7 @@ class SecurityRulesTest {
     @Autowired JwtEncoder jwtEncoder;
 
     @MockitoBean AuthService authService;
-    @MockitoBean EntryService entryService;
+    @MockitoBean MoodLogService moodLogService;
     @MockitoBean StatsService statsService;
     @MockitoBean UserService userService;
 
@@ -76,9 +80,9 @@ class SecurityRulesTest {
 
     @Test
     void rotasProtegidasSemTokenRetornam401() throws Exception {
-        mvc.perform(get("/v1/entries")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/v1/entries/1")).andExpect(status().isUnauthorized());
-        mvc.perform(delete("/v1/entries/1")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/mood-logs/all")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/mood-logs/today")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/v1/mood-logs/1")).andExpect(status().isUnauthorized());
         mvc.perform(get("/v1/stats")).andExpect(status().isUnauthorized());
         mvc.perform(get("/v1/users/me")).andExpect(status().isUnauthorized());
     }
@@ -89,19 +93,19 @@ class SecurityRulesTest {
         // troca um caractere no meio do payload → assinatura deixa de bater
         int i = t.indexOf('.') + 5;
         String adulterado = t.substring(0, i) + (t.charAt(i) == 'A' ? 'B' : 'A') + t.substring(i + 1);
-        mvc.perform(get("/v1/entries").header("Authorization", "Bearer " + adulterado))
+        mvc.perform(get("/v1/mood-logs/all").header("Authorization", "Bearer " + adulterado))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void tokenExpiradoRetorna401() throws Exception {
-        mvc.perform(get("/v1/entries").header("Authorization", "Bearer " + token(1, Instant.now().minusSeconds(600))))
+        mvc.perform(get("/v1/mood-logs/all").header("Authorization", "Bearer " + token(1, Instant.now().minusSeconds(600))))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void semTokenDevolveJsonDe401() throws Exception {
-        mvc.perform(get("/v1/entries"))
+        mvc.perform(get("/v1/mood-logs/all"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value("401"))
                 .andExpect(jsonPath("$.message").value("Token de acesso não informado"));
@@ -109,7 +113,7 @@ class SecurityRulesTest {
 
     @Test
     void tokenInvalidoDevolveJsonDe401() throws Exception {
-        mvc.perform(get("/v1/entries").header("Authorization", "Bearer token-falso"))
+        mvc.perform(get("/v1/mood-logs/all").header("Authorization", "Bearer token-falso"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value("401"))
                 .andExpect(jsonPath("$.message").value("Token inválido ou expirado"));
@@ -117,31 +121,34 @@ class SecurityRulesTest {
 
     @Test
     void tokenValidoUsaOIdDoTokenEIgnoraUserIdDaUrl() throws Exception {
-        when(entryService.listarPorUsuario(7L)).thenReturn(List.of());
+        when(moodLogService.listAll(7L)).thenReturn(List.of());
 
         // mesmo mandando ?userId=99, quem vale é o sub=7 do token
-        mvc.perform(get("/v1/entries?userId=99").header("Authorization", "Bearer " + validToken(7)))
+        mvc.perform(get("/v1/mood-logs/all?userId=99").header("Authorization", "Bearer " + validToken(7)))
                 .andExpect(status().isOk());
-        verify(entryService).listarPorUsuario(7L);
+        verify(moodLogService).listAll(7L);
     }
 
     @Test
-    void entryDeOutroUsuarioRetorna404() throws Exception {
-        when(entryService.buscarPorId(7L, 50L))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro não encontrado"));
+    void registroDeOutroUsuarioRetorna404() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro não encontrado"))
+                .when(moodLogService).delete(7L, 50L);
 
-        mvc.perform(get("/v1/entries/50").header("Authorization", "Bearer " + validToken(7)))
+        mvc.perform(delete("/v1/mood-logs/50").header("Authorization", "Bearer " + validToken(7)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void criarEntryUsaDonoDoToken() throws Exception {
-        mvc.perform(post("/v1/entries")
-                        .header("Authorization", "Bearer " + validToken(7))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"mood\":\"GOOD\",\"date\":\"2026-11-01\"}"))
+    void criarRegistroUsaDonoDoTokenERecebeAtividades() throws Exception {
+        mvc.perform(multipart("/v1/mood-logs")
+                        .param("mood", "ANSIOSO")
+                        .param("activities", "WORK", "REST")
+                        .header("Authorization", "Bearer " + validToken(7)))
                 .andExpect(status().isCreated());
-        verify(entryService).criar(eq(7L), any());
+        verify(moodLogService).create(eq(7L),
+                argThat(r -> r.mood() == MoodType.ANSIOSO
+                        && r.activities().equals(java.util.Set.of(Activity.WORK, Activity.REST))),
+                any());
     }
 
     @Test

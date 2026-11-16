@@ -12,14 +12,14 @@ import vivaleve.proj.dto.AiDtos.*;
 import vivaleve.proj.dto.StatsDtos.StatsSummary;
 import vivaleve.proj.model.AiConversationEntity;
 import vivaleve.proj.model.AiMessageEntity;
-import vivaleve.proj.model.EntryEntity;
+import vivaleve.proj.model.MoodLogEntity;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.model.enums.AiInteractionStatus;
 import vivaleve.proj.model.enums.AiMessageRole;
 import vivaleve.proj.model.enums.AiUseCase;
 import vivaleve.proj.repository.AiConversationRepository;
 import vivaleve.proj.repository.AiMessageRepository;
-import vivaleve.proj.repository.EntryRepository;
+import vivaleve.proj.repository.MoodLogRepository;
 import vivaleve.proj.repository.UserRepository;
 import vivaleve.proj.service.StatsService;
 import vivaleve.proj.service.ai.AiClient.AiChatMessage;
@@ -55,7 +55,7 @@ public class AiService {
     private final AiConversationRepository conversationRepository;
     private final AiMessageRepository messageRepository;
     private final UserRepository userRepository;
-    private final EntryRepository entryRepository;
+    private final MoodLogRepository moodLogRepository;
     private final StatsService statsService;
     private final AiProperties props;
 
@@ -99,14 +99,14 @@ public class AiService {
     /** REFLEXAO_REGISTRO: comentário sobre um registro. A nota do registro também passa pela checagem de risco. */
     public AiResponse entryReflection(Long userId, Long entryId, EntryReflectionRequest request) {
         UserEntity user = findUser(userId);
-        EntryEntity entry = entryRepository.findById(entryId)
+        MoodLogEntity entry = moodLogRepository.findById(entryId)
                 .filter(e -> Objects.equals(e.getUser().getId(), userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro não encontrado"));
 
         String context = promptFactory.describeEntry(entry);
         boolean crisis = crisisDetector.isCrisis(entry.getNote());
         AiConversationEntity conversation =
-                newConversation(user, AiUseCase.REFLEXAO_REGISTRO, "Reflexão do registro de " + entry.getDate());
+                newConversation(user, AiUseCase.REFLEXAO_REGISTRO, "Reflexão do registro de " + entry.getLogDate());
         List<AiChatMessage> prompt = crisis ? null : promptFactory.buildEntryReflection(request.userName(), entry);
         return run(conversation, context, crisis, prompt);
     }

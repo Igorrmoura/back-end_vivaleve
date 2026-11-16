@@ -6,7 +6,7 @@ import vivaleve.proj.dto.StatsDtos.MoodDistributionItem;
 import vivaleve.proj.dto.StatsDtos.MoodEvolutionPoint;
 import vivaleve.proj.dto.StatsDtos.StatsSummary;
 import vivaleve.proj.model.AiMessageEntity;
-import vivaleve.proj.model.EntryEntity;
+import vivaleve.proj.model.MoodLogEntity;
 import vivaleve.proj.model.enums.*;
 import vivaleve.proj.service.ai.AiClient.AiChatMessage;
 
@@ -51,29 +51,29 @@ class PromptFactoryTest {
     @Test
     void descreveEstatisticasSemInventarDados() {
         StatsSummary stats = new StatsSummary(7, LocalDate.of(2026, 11, 4), LocalDate.of(2026, 11, 10),
-                3, Mood.GOOD, 2, 3,
+                3, MoodType.BEM, 2, 3,
                 List.of(new MoodEvolutionPoint(LocalDate.of(2026, 11, 10), 4.0)),
-                List.of(new MoodDistributionItem(Mood.GOOD, 2, 66.67),
-                        new MoodDistributionItem(Mood.BAD, 1, 33.33),
-                        new MoodDistributionItem(Mood.AWFUL, 0, 0.0)));
+                List.of(new MoodDistributionItem(MoodType.BEM, 2, 66.67),
+                        new MoodDistributionItem(MoodType.MAL, 1, 33.33),
+                        new MoodDistributionItem(MoodType.DEPRESSIVO, 0, 0.0)));
 
         String texto = factory.describeStats(stats);
 
         assertThat(texto).contains("últimos 7 dias", "Total de registros: 3", "Humor predominante: bem",
                 "bem 2x (66.67%)", "mal 1x (33.33%)", "2026-11-10=4.0");
-        assertThat(texto).doesNotContain("muito mal 0x");
+        assertThat(texto).doesNotContain("depressivo 0x");
     }
 
     @Test
     void descreveRegistroEmPortugues() {
-        EntryEntity e = new EntryEntity();
-        e.setMood(Mood.NEUTRAL);
+        MoodLogEntity e = new MoodLogEntity();
+        e.setMood(MoodType.MAIS_OU_MENOS);
         e.setActivities(Set.of(Activity.EXERCISE, Activity.SLEEP_WELL));
         e.setNote("dia corrido");
-        e.setDate(LocalDate.of(2026, 11, 9));
+        e.setLogDate(LocalDate.of(2026, 11, 9));
 
         assertThat(factory.describeEntry(e))
-                .contains("2026-11-09", "Humor: neutro", "dormiu bem, exercício", "\"dia corrido\"");
+                .contains("2026-11-09", "Humor: mais ou menos", "dormiu bem, exercício", "\"dia corrido\"");
     }
 
     @Test
