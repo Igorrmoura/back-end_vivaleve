@@ -345,13 +345,13 @@ Usuário 1 ──── N Entrada de diário
 
 ## Equipe
 
-Tsukii3
+- Tsukii3
 
-Lucas
+- lfzorzetti-eng 
 
-Igor Moura 
+- gustavobferrao
 
-Gustavo Ferrão 
+- Igorrmoura
 
 
 ---
