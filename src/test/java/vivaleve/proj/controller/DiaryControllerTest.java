@@ -63,6 +63,21 @@ class DiaryControllerTest {
     }
 
     @Test
+    void datasSaemEmUtcComZ() throws Exception {
+        // o servidor grava no fuso dele (UTC no Render); o JSON precisa dizer que é UTC
+        String esperado = LocalDateTime.of(2026, 11, 13, 20, 30)
+                .atZone(java.time.ZoneId.systemDefault())
+                .withZoneSameInstant(java.time.ZoneOffset.UTC)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+        when(diaryService.buscarPorId(7L, 5L)).thenReturn(entrada(5L));
+
+        mvc.perform(get("/v1/diary/5").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value(esperado))
+                .andExpect(jsonPath("$.updatedAt").value(esperado));
+    }
+
+    @Test
     void criarDevolve201ComAEntrada() throws Exception {
         when(diaryService.criar(eq(7L), any())).thenReturn(entrada(5L));
 
