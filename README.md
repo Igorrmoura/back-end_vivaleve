@@ -345,13 +345,12 @@ Usuário 1 ──── N Entrada de diário
 
 ## Equipe
 
-- Tsukii3
+## 👥 Equipe
 
-- lfzorzetti-eng 
-
-- gustavobferrao
-
-- Igorrmoura
+- [Tsukii3](https://github.com/Tsukii3)
+- [lfzorzetti-eng](https://github.com/lfzorzetti-eng)
+- [gustavobferrao](https://github.com/gustavobferrao)
+- [Igorrmoura](https://github.com/Igorrmoura)
 
 
 ---
