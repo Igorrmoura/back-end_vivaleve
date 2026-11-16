@@ -347,7 +347,7 @@ Usuário 1 ──── N Entrada de diário
 
 ## 👥 Equipe
 
-- [Tsukii3](https://github.com/Tsukii3)
+- [Tsukiii3](https://github.com/Tsukiii3)
 - [lfzorzetti-eng](https://github.com/lfzorzetti-eng)
 - [gustavobferrao](https://github.com/gustavobferrao)
 - [Igorrmoura](https://github.com/Igorrmoura)
