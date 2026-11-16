@@ -8,12 +8,13 @@ import org.springframework.web.server.ResponseStatusException;
 import vivaleve.proj.dto.StatsDtos.MoodDistributionItem;
 import vivaleve.proj.dto.StatsDtos.MoodEvolutionPoint;
 import vivaleve.proj.dto.StatsDtos.StatsSummary;
-import vivaleve.proj.model.EntryEntity;
-import vivaleve.proj.model.enums.Mood;
-import vivaleve.proj.repository.EntryRepository;
+import vivaleve.proj.model.MoodLogEntity;
+import vivaleve.proj.model.enums.MoodType;
+import vivaleve.proj.repository.MoodLogRepository;
 import vivaleve.proj.repository.UserRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,8 +23,10 @@ import java.util.stream.Collectors;
 public class StatsService {
 
     private static final Set<Integer> PERIODOS_PERMITIDOS = Set.of(7, 30);
+    /** Mesmo fuso do MoodLogService, para "hoje" bater com a data gravada no registro. */
+    private static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
 
-    private final EntryRepository entryRepository;
+    private final MoodLogRepository moodLogRepository;
     private final UserRepository userRepository;
 
     /**
@@ -39,13 +42,13 @@ public class StatsService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
         }
 
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(ZONE);
         LocalDate inicio = hoje.minusDays(days - 1L);
 
-        List<EntryEntity> entries =
-                entryRepository.findByUser_IdAndDateBetweenOrderByDateAsc(userId, inicio, hoje);
+        List<MoodLogEntity> entries =
+                moodLogRepository.findByUserIdAndLogDateBetweenOrderByLogDateAscCreatedAtAsc(userId, inicio, hoje);
 
-        Map<Mood, Long> contagem = contarPorHumor(entries);
+        Map<MoodType, Long> contagem = contarPorHumor(entries);
 
         return new StatsSummary(
                 days,
@@ -53,18 +56,18 @@ public class StatsService {
                 hoje,
                 entries.size(),
                 calcularPredominante(contagem),
-                calcularStreakAtual(entryRepository.findDistinctDatesByUserId(userId), hoje),
+                calcularStreakAtual(moodLogRepository.findDistinctDates(userId), hoje),
                 calcularMaiorStreak(entries),
                 calcularEvolucao(entries),
                 calcularDistribuicao(contagem, entries.size())
         );
     }
 
-    /** Média do humor por dia (GREAT=5 ... AWFUL=1). Dias sem registro ficam de fora. */
-    private List<MoodEvolutionPoint> calcularEvolucao(List<EntryEntity> entries) {
+    /** Média do humor por dia (OTIMO=5 ... DEPRESSIVO=1, ANSIOSO=0, igual ao /api/history). Dias sem registro ficam de fora. */
+    private List<MoodEvolutionPoint> calcularEvolucao(List<MoodLogEntity> entries) {
         Map<LocalDate, Double> mediaPorDia = entries.stream()
                 .collect(Collectors.groupingBy(
-                        EntryEntity::getDate,
+                        MoodLogEntity::getLogDate,
                         TreeMap::new,
                         Collectors.averagingInt(e -> e.getMood().getScore())));
 
@@ -74,7 +77,7 @@ public class StatsService {
     }
 
     /** Quantidade e porcentagem de cada humor, incluindo os que tiveram zero registros. */
-    private List<MoodDistributionItem> calcularDistribuicao(Map<Mood, Long> contagem, long total) {
+    private List<MoodDistributionItem> calcularDistribuicao(Map<MoodType, Long> contagem, long total) {
         return contagem.entrySet().stream()
                 .map(e -> new MoodDistributionItem(
                         e.getKey(),
@@ -84,7 +87,7 @@ public class StatsService {
     }
 
     /** Humor mais frequente. Em caso de empate, vence o humor melhor (ordem do enum). */
-    private Mood calcularPredominante(Map<Mood, Long> contagem) {
+    private MoodType calcularPredominante(Map<MoodType, Long> contagem) {
         return contagem.entrySet().stream()
                 .filter(e -> e.getValue() > 0)
                 .max(Comparator.comparingLong(Map.Entry::getValue))
@@ -109,9 +112,9 @@ public class StatsService {
     }
 
     /** Maior sequência de dias seguidos com registro dentro do período. */
-    private int calcularMaiorStreak(List<EntryEntity> entries) {
+    private int calcularMaiorStreak(List<MoodLogEntity> entries) {
         List<LocalDate> datas = entries.stream()
-                .map(EntryEntity::getDate)
+                .map(MoodLogEntity::getLogDate)
                 .distinct()
                 .sorted()
                 .toList();
@@ -128,9 +131,9 @@ public class StatsService {
     }
 
     /** Conta quantos registros existem de cada humor, começando todos em zero. */
-    private Map<Mood, Long> contarPorHumor(List<EntryEntity> entries) {
-        Map<Mood, Long> contagem = new EnumMap<>(Mood.class);
-        for (Mood mood : Mood.values()) {
+    private Map<MoodType, Long> contarPorHumor(List<MoodLogEntity> entries) {
+        Map<MoodType, Long> contagem = new EnumMap<>(MoodType.class);
+        for (MoodType mood : MoodType.values()) {
             contagem.put(mood, 0L);
         }
         entries.forEach(e -> contagem.merge(e.getMood(), 1L, Long::sum));

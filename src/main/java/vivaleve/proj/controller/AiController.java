@@ -38,11 +38,11 @@ public class AiController {
         return aiService.moodInsight(CurrentUser.id(jwt), request);
     }
 
-    /** POST /v1/ai/entries/{entryId}/reflection — comentário acolhedor sobre um registro do usuário. */
-    @PostMapping("/entries/{entryId}/reflection")
-    public AiResponse entryReflection(@AuthenticationPrincipal Jwt jwt, @PathVariable Long entryId,
+    /** POST /v1/ai/mood-logs/{moodLogId}/reflection — comentário acolhedor sobre um registro de humor do usuário. */
+    @PostMapping("/mood-logs/{moodLogId}/reflection")
+    public AiResponse entryReflection(@AuthenticationPrincipal Jwt jwt, @PathVariable Long moodLogId,
                                       @Valid @RequestBody EntryReflectionRequest request) {
-        return aiService.entryReflection(CurrentUser.id(jwt), entryId, request);
+        return aiService.entryReflection(CurrentUser.id(jwt), moodLogId, request);
     }
 
     /** GET /v1/ai/conversations — conversas do usuário, da mais recente para a mais antiga. */

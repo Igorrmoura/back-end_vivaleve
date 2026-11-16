@@ -16,12 +16,12 @@ import vivaleve.proj.dto.AiDtos.*;
 import vivaleve.proj.dto.StatsDtos.StatsSummary;
 import vivaleve.proj.model.AiConversationEntity;
 import vivaleve.proj.model.AiMessageEntity;
-import vivaleve.proj.model.EntryEntity;
+import vivaleve.proj.model.MoodLogEntity;
 import vivaleve.proj.model.UserEntity;
 import vivaleve.proj.model.enums.*;
 import vivaleve.proj.repository.AiConversationRepository;
 import vivaleve.proj.repository.AiMessageRepository;
-import vivaleve.proj.repository.EntryRepository;
+import vivaleve.proj.repository.MoodLogRepository;
 import vivaleve.proj.repository.UserRepository;
 import vivaleve.proj.service.StatsService;
 import vivaleve.proj.service.ai.AiClient.AiChatMessage;
@@ -45,7 +45,7 @@ class AiServiceTest {
     @Mock AiConversationRepository conversationRepository;
     @Mock AiMessageRepository messageRepository;
     @Mock UserRepository userRepository;
-    @Mock EntryRepository entryRepository;
+    @Mock MoodLogRepository moodLogRepository;
     @Mock StatsService statsService;
 
     private AiService service;
@@ -57,7 +57,7 @@ class AiServiceTest {
         AiProperties props = new AiProperties(null, "key", null, null, null, null, null, 10, null);
         promptFactory = new PromptFactory(props);
         service = new AiService(aiClient, promptFactory, new CrisisDetector(), conversationRepository,
-                messageRepository, userRepository, entryRepository, statsService, props);
+                messageRepository, userRepository, moodLogRepository, statsService, props);
 
         user = UserEntity.builder().email("ana@pluma.com").password("123456").build();
         ReflectionTestUtils.setField(user, "id", 1L);
@@ -204,9 +204,9 @@ class AiServiceTest {
     void reflexaoDeRegistroDeOutroUsuarioDa404() {
         UserEntity outro = UserEntity.builder().email("x@x.com").password("123456").build();
         ReflectionTestUtils.setField(outro, "id", 2L);
-        EntryEntity entry = new EntryEntity();
+        MoodLogEntity entry = new MoodLogEntity();
         entry.setUser(outro);
-        when(entryRepository.findById(7L)).thenReturn(Optional.of(entry));
+        when(moodLogRepository.findById(7L)).thenReturn(Optional.of(entry));
 
         assertThatThrownBy(() -> service.entryReflection(1L, 7L, new EntryReflectionRequest(null)))
                 .isInstanceOf(ResponseStatusException.class)
@@ -216,12 +216,12 @@ class AiServiceTest {
 
     @Test
     void reflexaoDeRegistroComNotaDeRiscoDevolveCrise() {
-        EntryEntity entry = new EntryEntity();
+        MoodLogEntity entry = new MoodLogEntity();
         entry.setUser(user);
-        entry.setMood(Mood.AWFUL);
-        entry.setDate(LocalDate.now());
+        entry.setMood(MoodType.DEPRESSIVO);
+        entry.setLogDate(LocalDate.now());
         entry.setNote("hoje pensei em me machucar");
-        when(entryRepository.findById(7L)).thenReturn(Optional.of(entry));
+        when(moodLogRepository.findById(7L)).thenReturn(Optional.of(entry));
 
         AiResponse resp = service.entryReflection(1L, 7L, new EntryReflectionRequest(null));
 

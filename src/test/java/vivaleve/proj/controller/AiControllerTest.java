@@ -147,7 +147,7 @@ class AiControllerTest {
     void reflexaoUsaIdDoPathEDonoDoToken() throws Exception {
         when(aiService.entryReflection(eq(7L), eq(3L), any())).thenReturn(resposta(AiUseCase.REFLEXAO_REGISTRO));
 
-        mvc.perform(post("/v1/ai/entries/3/reflection")
+        mvc.perform(post("/v1/ai/mood-logs/3/reflection")
                         .header("Authorization", auth())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

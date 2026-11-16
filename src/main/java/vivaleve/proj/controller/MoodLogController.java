@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vivaleve.proj.config.CurrentUser;
 import vivaleve.proj.dto.MoodLogDto;
+import vivaleve.proj.model.enums.Activity;
 import vivaleve.proj.model.enums.MoodType;
 import vivaleve.proj.service.MoodLogService;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/v1/mood-logs")
@@ -31,9 +33,10 @@ public class MoodLogController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam @NotNull MoodType mood,
             @RequestParam(required = false) @Size(max = 500) String note,
+            @RequestParam(required = false) Set<Activity> activities,
             @RequestParam(required = false) MultipartFile image) {
 
-        var response = service.create(CurrentUser.id(jwt) , new MoodLogDto.MoodLogRequest(mood, note), image);
+        var response = service.create(CurrentUser.id(jwt) , new MoodLogDto.MoodLogRequest(mood, note, activities), image);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -60,12 +63,13 @@ public class MoodLogController {
             @PathVariable Long id,
             @RequestParam @NotNull MoodType mood,
             @RequestParam(required = false) @Size(max = 500) String note,
+            @RequestParam(required = false) Set<Activity> activities,
             @RequestParam(required = false) MultipartFile image) {
 
         var response = service.update(
                 CurrentUser.id(jwt),
                 id,
-                new MoodLogDto.MoodLogRequest(mood, note),
+                new MoodLogDto.MoodLogRequest(mood, note, activities),
                 image
         );
 

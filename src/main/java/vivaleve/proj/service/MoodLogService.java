@@ -17,7 +17,9 @@ import vivaleve.proj.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +48,7 @@ public class MoodLogService {
                 .user(user)
                 .mood(req.mood())
                 .note(req.note())
+                .activities(req.activities() == null ? new HashSet<>() : new HashSet<>(req.activities()))
                 .logDate(today)
                 .imageUrl(saveImage(image))
                 .build();
@@ -93,6 +96,10 @@ public class MoodLogService {
 
         log.setMood(req.mood());
         log.setNote(req.note());
+        if (req.activities() != null) {
+            log.getActivities().clear();
+            log.getActivities().addAll(req.activities());
+        }
 
         if (image != null && !image.isEmpty()) {
             log.setImageUrl(saveImage(image));
@@ -132,7 +139,7 @@ public class MoodLogService {
     private MoodLogDto.MoodLogResponse toResponse(MoodLogEntity m) {
         UserEntity u = m.getUser();
         return new MoodLogDto.MoodLogResponse(
-                m.getId(), m.getMood(), m.getNote(),
+                m.getId(), m.getMood(), Set.copyOf(m.getActivities()), m.getNote(),
                 m.getImageUrl(), m.getLogDate(), m.getCreatedAt(),
                 new UserResponseDto(u.getId(), u.getEmail(), u.getName(), u.getPictureUrl()));
 

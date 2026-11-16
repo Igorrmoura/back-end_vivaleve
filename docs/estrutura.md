@@ -8,32 +8,32 @@ vivaleve.proj
 ├── controller/                      ← C: recebe a requisição e devolve a resposta
 │   ├── AuthController.java          (POST /v1/auth/google — troca o ID Token do Google pelo JWT da API)
 │   ├── UserController.java          (GET /v1/users/me)
-│   ├── EntryController.java         (CRUD /v1/entries — sempre do usuário do token)
+│   ├── MoodLogController.java       (CRUD /v1/mood-logs, multipart: mood, note, activities, image — usuário do token)
 │   └── StatsController.java         (GET /v1/stats?days=7|30)
 │
 ├── service/                         ← regras de negócio
 │   ├── AuthService.java             (login/cadastro via Google, vínculo de conta antiga, emissão do JWT)
 │   ├── GoogleTokenVerifier.java     (valida assinatura, iss, aud, exp e email_verified do ID Token)
 │   ├── UserService.java             (perfil + conversão UserEntity → UserResponseDto)
-│   ├── EntryService.java            (CRUD com checagem de dono → 404 se for de outro usuário)
-│   └── StatsService.java            (evolução, distribuição, predominante, streak)
+│   ├── MoodLogService.java          (até 3 registros/dia, checagem de dono → 404 se for de outro usuário)
+│   └── StatsService.java            (evolução, distribuição, predominante, streak — lê registros_humor)
 │
 ├── repository/                      ← acesso a dados (Spring Data JPA)
 │   ├── UserRepository.java          (findByGoogleSub, findByEmail)
-│   └── EntryRepository.java         (findByIdAndUser_Id, por período, datas distintas)
+│   └── MoodLogRepository.java       (por dia, por período, datas distintas, contagem por humor)
 │
 ├── model/                           ← M: entidades e enums
 │   ├── BaseEntity.java              (id, createdAt, updatedAt)
 │   ├── UserEntity.java              (tabela usuarios: email, googleSub, name, pictureUrl — sem senha)
-│   ├── EntryEntity.java             (tabela registros: mood, activities, note, date, user)
+│   ├── MoodLogEntity.java           (tabela registros_humor: mood, activities, note, imageUrl, logDate, user)
 │   └── enums/
-│       ├── Mood.java                (GREAT=5 … AWFUL=1)
+│       ├── MoodType.java            (OTIMO=5 … DEPRESSIVO=1, ANSIOSO=0)
 │       └── Activity.java
 │
 ├── dto/                             ← V: formato do JSON de entrada e saída
 │   ├── AuthDtos.java                (records: GoogleLoginRequest, AuthResponse)
 │   ├── UserResponseDto.java         (id, email, name, pictureUrl)
-│   ├── EntryDtos.java               (EntryRequest, EntryResponse)
+│   ├── MoodLogDto.java              (MoodLogRequest, MoodLogResponse)
 │   └── StatsDtos.java               (StatsSummary, MoodEvolutionPoint, MoodDistributionItem)
 │
 └── exceptions/                      (ainda não usadas — os services lançam ResponseStatusException)
@@ -48,7 +48,7 @@ src/test/java/vivaleve/proj
 ├── DemoApplicationTests.java        (contextLoads — precisa de banco e variáveis de ambiente)
 ├── AuthServiceGoogleTest.java
 ├── GoogleTokenVerifierTest.java
-├── EntryServiceOwnershipTest.java
+├── MoodLogServiceOwnershipTest.java
 ├── SecurityRulesTest.java
 └── config/SecurityConfigTestSimple.java
 
