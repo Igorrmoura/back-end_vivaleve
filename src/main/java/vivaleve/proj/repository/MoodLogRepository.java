@@ -20,22 +20,52 @@ public interface MoodLogRepository extends JpaRepository<MoodLogEntity, Long> {
 
     long countByUserIdAndLogDate(Long userId, LocalDate date);
 
-    // paginado (usado no history)
-    Page<MoodLogEntity> findByUserIdOrderByLogDateDesc(Long userId, Pageable pageable);
+    // Paginação
+    Page<MoodLogEntity> findByUserIdOrderByLogDateDesc(
+            Long userId,
+            Pageable pageable
+    );
 
-    // lista completa (usado no listAll)
+    // Lista completa
     @EntityGraph(attributePaths = "user")
     List<MoodLogEntity> findByUserIdOrderByLogDateDesc(Long userId);
 
-    // útil para estatísticas (aba Histórico)
+    // Histórico: busca datas distintas dos registros
     @Query("""
-        SELECT m.mood, COUNT(m) FROM MoodLogEntity m
-        WHERE m.user.id = :userId AND m.logDate BETWEEN :start AND :end
-        GROUP BY m.mood
-    """)
+            SELECT DISTINCT m.logDate
+            FROM MoodLogEntity m
+            WHERE m.user.id = :userId
+            ORDER BY m.logDate DESC
+            """)
+    List<LocalDate> findDistinctDates(@Param("userId") Long userId);
+
+    // Histórico: conta todos os registros do usuário
+    long countByUserId(Long userId);
+
+    // Histórico: busca registros dentro de um período
+    List<MoodLogEntity> findByUserIdAndLogDateBetweenOrderByLogDateAscCreatedAtAsc(
+            Long userId,
+            LocalDate start,
+            LocalDate end
+    );
+
+    // Estatísticas: quantidade de registros por tipo de humor
+    @Query("""
+            SELECT m.mood, COUNT(m)
+            FROM MoodLogEntity m
+            WHERE m.user.id = :userId
+            AND m.logDate BETWEEN :start AND :end
+            GROUP BY m.mood
+            """)
     List<Object[]> countByMood(
             @Param("userId") Long userId,
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
+    );
+
+    // Consulta registros de uma data específica
+    List<MoodLogEntity> findAllByUserIdAndLogDateOrderByCreatedAtDesc(
+            Long userId,
+            LocalDate logDate
     );
 }

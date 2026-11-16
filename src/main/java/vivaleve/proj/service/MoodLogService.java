@@ -17,7 +17,9 @@ import vivaleve.proj.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +48,7 @@ public class MoodLogService {
                 .user(user)
                 .mood(req.mood())
                 .note(req.note())
+                .activities(req.activities() == null ? new HashSet<>() : new HashSet<>(req.activities()))
                 .logDate(today)
                 .imageUrl(saveImage(image))
                 .build();
@@ -54,10 +57,15 @@ public class MoodLogService {
     }
 
     @Transactional(readOnly = true)
-    public MoodLogDto.MoodLogResponse getToday(Long userId) {
-        return moodLogRepository.findByUserIdAndLogDate(userId, LocalDate.now(ZONE))
+    public List<MoodLogDto.MoodLogResponse> getToday(Long userId) {
+
+        LocalDate today = LocalDate.now(ZONE);
+
+        return moodLogRepository
+                .findAllByUserIdAndLogDateOrderByCreatedAtDesc(userId, today)
+                .stream()
                 .map(this::toResponse)
-                .orElseThrow(() -> new NotFoundException("Nenhum registro hoje"));
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -78,13 +86,26 @@ public class MoodLogService {
     }
 
     @Transactional
-    public MoodLogDto.MoodLogResponse update(Long userId, Long id, MoodLogDto.MoodLogRequest req, MultipartFile image) {
+    public MoodLogDto.MoodLogResponse update(
+            Long userId,
+            Long id,
+            MoodLogDto.MoodLogRequest req,
+            MultipartFile image) {
+
         MoodLogEntity log = findOwned(userId, id);
+
         log.setMood(req.mood());
         log.setNote(req.note());
+        if (req.activities() != null) {
+            log.getActivities().clear();
+            log.getActivities().addAll(req.activities());
+        }
 
-        if (image != null && !image.isEmpty()) log.setImageUrl(saveImage(image));
-        return toResponse(log);   // dirty checking salva sozinho
+        if (image != null && !image.isEmpty()) {
+            log.setImageUrl(saveImage(image));
+        }
+
+        return toResponse(moodLogRepository.save(log));
     }
 
     @Transactional
@@ -98,7 +119,7 @@ public class MoodLogService {
                 .orElseThrow(() -> new NotFoundException("Registro não encontrado"));
 
         if (!log.getUser().getId().equals(userId)) {
-            throw new BadRequestExceptions("Registro não encontrado"); // não revela que existe
+            throw new NotFoundException("Registro não encontrado"); // não revela que existe
         }
         return log;
     }
@@ -118,8 +139,9 @@ public class MoodLogService {
     private MoodLogDto.MoodLogResponse toResponse(MoodLogEntity m) {
         UserEntity u = m.getUser();
         return new MoodLogDto.MoodLogResponse(
-                m.getId(), m.getMood(), m.getNote(),
+                m.getId(), m.getMood(), Set.copyOf(m.getActivities()), m.getNote(),
                 m.getImageUrl(), m.getLogDate(), m.getCreatedAt(),
-                new UserResponseDto(u.getId(), u.getEmail()));
+                new UserResponseDto(u.getId(), u.getEmail(), u.getName(), u.getPictureUrl()));
+
     }
 }
